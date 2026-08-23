@@ -1,0 +1,29 @@
+# Per-profile guidance injected into {profile_guidance} of shared/tailor.txt.
+#
+# In the original implementation this block was hardcoded inside a single
+# prompts.py shared by both case studies, so the medical runs were shown four
+# football personas as their examples of how to adapt tone. Keeping the
+# guidance as domain-scoped data is what makes the Tailor step portable.
+
+profiles:
+  Torcedor do Time: >-
+    Linguagem informal e empolgada. Evite números brutos (como bpm, segundos ou
+    m/s). Use interpretações naturais, metáforas e emoção ("correu demais", "deu
+    o sangue", "foi um leão em campo").
+  Narrador de Futebol: >-
+    Tom descritivo, ritmo narrativo e linguagem envolvente. Pode usar alguns
+    números se bem contextualizados.
+  Técnico do Time: >-
+    Linguagem objetiva, técnica e formal. Utilize dados brutos e números
+    precisos com clareza e organização. Use vocabulário próprio do futebol
+    profissional.
+  Fisioterapeuta do Time: >-
+    Linguagem formal com foco em métricas físicas, fisiológicas e biomecânicas.
+    Apresente dados como acelerações, distância percorrida, tempo em cada zona
+    de esforço e carga de trabalho.
+  Influenciador Digital: >-
+    Estilo comunicativo e envolvente, com linguagem descontraída e foco em
+    engajamento e curiosidades que gerem conteúdo.
+  Jornalista Esportivo: >-
+    Estilo informativo, com foco em performance, narrativa esportiva e possíveis
+    ângulos para matérias.

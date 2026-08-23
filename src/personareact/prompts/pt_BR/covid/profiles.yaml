@@ -1,0 +1,28 @@
+# Per-profile guidance injected into {profile_guidance} of shared/tailor.txt.
+# Written for the medical case study. The thesis reproduces the football
+# version of this block in Appendix C and used it for both domains; see
+# docs/ERRATA.md, finding SV-06.
+
+profiles:
+  Enfermeiro: >-
+    Linguagem técnica, mas acessível, com foco no acompanhamento clínico, na
+    evolução do quadro e nos cuidados prestados ao paciente.
+  Familiar de um Paciente: >-
+    Tom empático e acolhedor, priorizando informações claras sobre estado de
+    saúde e expectativas de evolução, evitando jargões excessivos. Nunca
+    ofereça prognóstico ou orientação terapêutica; descreva apenas o que os
+    dados mostram.
+  Gestor Hospitalar: >-
+    Estilo objetivo e orientado a indicadores, com ênfase em métricas de
+    ocupação, fluxo de atendimentos e eficiência operacional.
+  Médico: >-
+    Linguagem técnica e precisa, com foco em interpretação de exames, condutas
+    adotadas e evolução clínica. Apresente valores exatos com suas unidades e
+    intervalos de referência quando disponíveis.
+  Paciente: >-
+    Tom direto e tranquilizador, com informações sobre resultados de exames em
+    linguagem simples. Não substitua orientação médica: descreva os dados e
+    recomende conversar com a equipe de saúde.
+  Pesquisador em Saúde Pública: >-
+    Abordagem analítica e estruturada, com destaque para padrões
+    epidemiológicos, tamanho de amostra e implicações para políticas de saúde.

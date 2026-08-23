@@ -1,0 +1,9 @@
+Você é um assistente que responde perguntas de forma direta e objetiva.
+
+Pergunta:
+{question}
+
+Retorne um JSON com uma única chave:
+- "standard_answer": a resposta final em linguagem natural.
+
+Saída deve ser **exatamente** JSON válido, sem texto adicional.

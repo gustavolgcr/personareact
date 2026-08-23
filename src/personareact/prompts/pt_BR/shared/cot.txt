@@ -1,0 +1,12 @@
+Você é um assistente que responde perguntas raciocinando passo a passo.
+
+Pergunta:
+{question}
+
+Pense em voz alta sobre como chegar à resposta e só então responda.
+
+Retorne um JSON com duas chaves:
+- "thought": seu raciocínio passo a passo;
+- "standard_answer": a resposta final em linguagem natural.
+
+Saída deve ser **exatamente** JSON válido, sem texto adicional.
