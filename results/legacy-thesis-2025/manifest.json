@@ -1,0 +1,21 @@
+{
+  "run_id": "legacy-thesis-2025",
+  "kind": "generate",
+  "provenance": "imported from the original twelve-repository tree by scripts/migrate_legacy.py",
+  "faithful": true,
+  "records": 3640,
+  "known_defects": [
+    "SV-03: the `react` rows answered the NEUTRAL question, not the profile's phrasing",
+    "SV-04: the judge saw a different context for `react` than for the other approaches",
+    "SV-05: one react answer set was scored once per profile and counted six times",
+    "SV-06: the covid runs used a football Text-to-SQL prompt and football profile examples",
+    "SV-09: empty answers and `[ERRO: 'thought']` sentinels were scored as answers",
+    "SV-13: the judge model was deepeval's unpinned `gpt-4o` default",
+    "SV-14: PersonaReAct and the ReAct baselines queried different builds of soccer.sqlite"
+  ],
+  "migration_report": [
+    "corpus: 280 questions",
+    "answers: 3640 imported, 15 empty, 2 error sentinels",
+    "scores: 75600 imported, 0 rows unmatched to a question id"
+  ]
+}
