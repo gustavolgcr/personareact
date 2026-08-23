@@ -1,0 +1,9 @@
+name: cot
+display_name: Reason Only (chain of thought)
+description: >-
+  The "Reason Only" paradigm of Figure 2: the model emits reasoning traces but
+  never acts on the environment.
+use_reasoning: true
+use_tools: false
+use_tailor: false
+max_iterations: 1

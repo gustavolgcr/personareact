@@ -1,0 +1,25 @@
+name: e2
+description: >-
+  Experiment 2 -- variation between profiles. For each question, one neutral
+  answer plus six personalized ones, compared with textual and semantic
+  similarity metrics.
+
+  The neutral reference is PersonaReAct run with profile `neutral`, which
+  disables the Tailor step. That is what section 5.5 of the thesis describes
+  ("PersonaReAct com o módulo Tailor desativado") but the original code had no
+  such switch -- it used the plain-ReAct answer files instead. Section 4.4's
+  backward-compatibility path makes the described mechanism real.
+
+domains: [soccer, covid]
+approaches: [personareact]
+models: [o3-mini, gpt-4.1-mini]
+difficulties: [easy, hard]
+profiles:
+  - neutral
+  - Torcedor do Time
+  - Técnico do Time
+  - Narrador de Futebol
+  - Influenciador Digital
+  - Fisioterapeuta do Time
+  - Jornalista Esportivo
+judge: geval-gpt4o-2024-11-20

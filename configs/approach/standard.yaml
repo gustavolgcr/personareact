@@ -1,0 +1,10 @@
+name: standard
+display_name: Standard prompting
+description: >-
+  A single model call with no reasoning trace and no tools. The weakest
+  baseline; corresponds to no box in Figure 2 of the thesis but bounds the
+  others from below.
+use_reasoning: false
+use_tools: false
+use_tailor: false
+max_iterations: 1

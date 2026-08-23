@@ -1,0 +1,16 @@
+name: e1
+description: >-
+  Experiment 1 -- effectiveness of personalization. Compares ReAct,
+  ReAct + enriched prompt and PersonaReAct across seven models and two
+  domains, judged by G-Eval on four criteria.
+
+  Differs from the thesis in one deliberate way: the profile-blind ReAct
+  baseline answers the *profile's* phrasing of each question rather than the
+  neutral phrasing, so all three conditions differ on exactly one variable.
+  See docs/ERRATA.md (SV-03).
+
+domains: [soccer, covid]
+approaches: [react, react_enriched, personareact]
+models: [o3-mini, o4-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, gpt-5-mini, gpt-5-nano]
+difficulties: [easy, hard]
+judge: geval-gpt4o-2024-11-20

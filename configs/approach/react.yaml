@@ -1,0 +1,9 @@
+name: react
+display_name: ReAct
+description: >-
+  The Yao et al. (2023) Reason-Act cycle. Receives the profile's phrasing of
+  the question, but no profile information anywhere in its prompt.
+use_reasoning: true
+use_tools: true
+use_tailor: false
+max_iterations: 5

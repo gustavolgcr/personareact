@@ -1,0 +1,17 @@
+name: react_enriched
+display_name: ReAct + enriched prompt
+description: >-
+  ReAct with the user profile appended to the question. The competing
+  personalization strategy, and PersonaReAct's closest competitor in the
+  thesis results.
+
+  The suffix below is the exact text from the original implementation
+  (react/src/main.py, line 86, where it lived commented out). A second and
+  different implementation of this condition existed in the
+  react_prompt_personalization project, which produced no data; see
+  docs/ERRATA.md (RP-02).
+use_reasoning: true
+use_tools: true
+use_tailor: false
+max_iterations: 5
+question_suffix: " Mude a resposta com base no perfil do usuário que fez a pergunta: {profile}."

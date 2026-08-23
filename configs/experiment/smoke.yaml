@@ -1,0 +1,12 @@
+name: smoke
+description: >-
+  One question, one model, every approach. Proves the pipeline end to end for
+  a few cents before anyone starts a real sweep.
+
+domains: [soccer]
+approaches: [standard, cot, act, react, react_enriched, personareact]
+models: [gpt-4.1-mini]
+difficulties: [easy]
+profiles: ["Torcedor do Time"]
+limit_questions: 1
+judge: geval-gpt4o-2024-11-20

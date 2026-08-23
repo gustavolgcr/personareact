@@ -1,0 +1,25 @@
+name: soccer
+display_name: Sports (football)
+description: >-
+  Physical and physiological tracking data for every Fortaleza E.C. player
+  across the 2023 season, captured with Polar Team Pro wearables at 1 Hz and
+  segmented into 30-point trajectory windows. Restricted use: the raw data was
+  released under an agreement with the club and cannot be redistributed.
+
+database: soccer.sqlite
+# Verified before every run. The audit found three diverged builds of this
+# database across nine project folders; see docs/ERRATA.md (SV-14).
+database_sha256: c1b9260902d710bdddcd174e32b4827d52276031bb5c28fbb97b17e1df2fe964
+expects_views:
+  - View_EstatisticasComJogadorJogo
+  - View_ResumoPorJogadorEPartida
+
+prompt_dir: soccer
+
+profiles:
+  - Torcedor do Time
+  - Técnico do Time
+  - Narrador de Futebol
+  - Influenciador Digital
+  - Fisioterapeuta do Time
+  - Jornalista Esportivo

@@ -1,0 +1,9 @@
+name: act
+display_name: Act Only
+description: >-
+  The "Act Only" paradigm of Figure 2: one tool call, no explicit reasoning.
+  The observation is returned as the answer.
+use_reasoning: false
+use_tools: true
+use_tailor: false
+max_iterations: 1

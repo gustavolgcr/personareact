@@ -1,0 +1,11 @@
+name: e1-ablations
+description: >-
+  Experiment 1 extended with the three paradigms the thesis illustrates in
+  Figure 2 but never measured: Standard prompting, Reason Only (CoT) and
+  Act Only. Cheap to run and it bounds the ReAct family from below.
+
+domains: [soccer, covid]
+approaches: [standard, cot, act, react, react_enriched, personareact]
+models: [gpt-4.1-mini, o3-mini]
+difficulties: [easy, hard]
+judge: geval-gpt4o-2024-11-20

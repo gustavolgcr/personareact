@@ -1,0 +1,11 @@
+name: personareact
+display_name: PersonaReAct
+description: >-
+  The proposed method: the Reason-Act cycle followed by an explicit
+  personalization step (the Tailor function tau(p, O*) of section 4.2).
+  With no profile supplied it degrades to plain ReAct, which is the backward
+  compatibility claimed in section 4.4.
+use_reasoning: true
+use_tools: true
+use_tailor: true
+max_iterations: 5

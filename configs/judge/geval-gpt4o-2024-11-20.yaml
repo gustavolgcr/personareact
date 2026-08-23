@@ -1,0 +1,22 @@
+name: geval-gpt4o-2024-11-20
+# A dated snapshot, never a floating alias. The original left
+# `# model=OPENAI_MODEL` commented out on every metric, so deepeval fell back
+# to its default `gpt-4o` -- which resolves the contradiction between sections
+# 5.3 (GPT-4o) and 5.5 (4o-mini) of the thesis in favour of 5.3, but leaves the
+# scores unrecoverable once OpenAI repoints the alias.
+model: gpt-4o-2024-11-20
+repetitions: 5
+
+# Strip the condition label before judging so the judge cannot infer which
+# approach produced an answer.
+blind: true
+
+# The three criteria of the thesis. Factual fidelity is deliberately NOT a
+# judge criterion: it is computed programmatically against the retrieved data
+# by personareact.eval.factuality, so it needs no judge and cannot be argued
+# with. Adding it here would also force per-answer context into the judge
+# prompt and reintroduce the asymmetry that SV-04 fixes.
+criteria:
+  - language_and_style
+  - data_interpretation
+  - style_consistency

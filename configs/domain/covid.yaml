@@ -1,0 +1,20 @@
+name: covid
+display_name: Medical (COVID-19)
+description: >-
+  Anonymised patient, laboratory and outcome records from Hospital
+  Sirio-Libanes, published through the FAPESP COVID-19 Data Sharing/BR
+  repository. Publicly available; see docs/DATA.md for the download procedure.
+
+database: covid.sqlite
+database_sha256: f62d146e48060d91a1f207c114981b651ca9b67aff5cbeaa22912a4fce2c3fff
+expects_views: []
+
+prompt_dir: covid
+
+profiles:
+  - Enfermeiro
+  - Familiar de um Paciente
+  - Gestor Hospitalar
+  - Médico
+  - Paciente
+  - Pesquisador em Saúde Pública

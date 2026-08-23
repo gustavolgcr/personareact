@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: "PersonaReAct: profile-driven personalization of language-model answers on top of the ReAct paradigm"
+message: "If you use this software, please cite both the software and the thesis."
+type: software
+authors:
+  - given-names: "Luis Gustavo"
+    family-names: "Coutinho do Rêgo"
+    email: gustavolgcr@gmail.com
+    affiliation: "Universidade Federal do Ceará"
+repository-code: "https://github.com/gustavolgcr/personareact"
+license: MIT
+version: 1.0.0
+keywords:
+  - large language models
+  - personalization
+  - intelligent agents
+  - prompt engineering
+  - ReAct
+references:
+  - type: thesis
+    title: "PersonaReAct: Personalização de Respostas em Modelos de Linguagem com base no Paradigma ReAct"
+    thesis-type: "PhD thesis"
+    authors:
+      - given-names: "Luis Gustavo"
+        family-names: "Coutinho do Rêgo"
+    institution:
+      name: "Universidade Federal do Ceará, Programa de Pós-Graduação em Ciência da Computação"
+    year: 2025
+    location:
+      name: "Fortaleza, Brazil"

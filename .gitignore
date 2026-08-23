@@ -1,0 +1,43 @@
+# --- secrets -----------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- data (large, and partly under a restricted-use agreement) ----------------
+# Rebuild with `make data`; see docs/DATA.md for provenance.
+data/*
+!data/.gitkeep
+!data/README.md
+# The question corpus is the experimental instrument, not a data blob: it is
+# small, it must be citable, and every result joins to it by question_id.
+!data/questions.jsonl
+
+# --- generated outputs --------------------------------------------------------
+# Run directories are reproducible from configs + manifest. Keep the ones you
+# want to publish by force-adding them: `git add -f results/<run_id>`.
+results/*
+!results/.gitkeep
+figures/*
+!figures/.gitkeep
+tables/*
+!tables/.gitkeep
+
+# --- python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- tooling ------------------------------------------------------------------
+.deepeval/
+.deepeval_telemetry.txt
+.ipynb_checkpoints/
+
+# --- os -----------------------------------------------------------------------
+.DS_Store

@@ -1,0 +1,15 @@
+name: gpt-4o-mini
+model: gpt-4o-mini-2024-07-18
+# Hold the Text-to-SQL generator fixed to isolate the personalization axis.
+# Leave null to reproduce the thesis, where sweeping the model swept the SQL
+# generator too and H4 conflated the two abilities (docs/ERRATA.md, SV-08).
+sql_model: null
+reasoning: false
+supports_sampling_params: true
+temperature: 1.0
+top_p: 1.0
+frequency_penalty: 0.0
+seed: 20250820
+# Indicative USD per 1M tokens, for the pre-flight cost estimate only.
+usd_per_1m_input: 0.15
+usd_per_1m_output: 0.60

@@ -1,0 +1,82 @@
+[project]
+name = "personareact"
+version = "1.0.0"
+description = "PersonaReAct: profile-driven personalization of language-model answers on top of the ReAct paradigm"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "MIT" }
+authors = [{ name = "Gustavo Coutinho", email = "gustavolgcr@gmail.com" }]
+keywords = ["llm", "react", "personalization", "agents", "prompt-engineering", "text-to-sql"]
+
+dependencies = [
+    # Pinned to the stack the thesis experiments ran on. LangGraph and
+    # langgraph-prebuilt are versioned independently and drifted apart: a loose
+    # range resolves prebuilt 1.x against langgraph 0.4.x and crashes with
+    # `No module named 'langgraph._internal'`. uv.lock has the exact set.
+    "langchain>=0.3.24,<0.4",
+    "langchain-openai>=0.3.14,<0.4",
+    "langchain-community>=0.3.22,<0.4",
+    "langgraph>=0.3.31,<0.4",
+    "langgraph-prebuilt>=0.1.8,<0.2",
+    "openai>=1.75.0,<2",
+    "pyyaml>=6.0,<7",
+    "typer>=0.12,<0.20",
+    "rich>=13.7,<15",
+    "tqdm>=4.67,<5",
+    "python-dotenv>=1.0,<2",
+    "pandas>=2.2,<3",
+    "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+# Judge (LLM-as-a-judge via G-Eval). Heavy and independently versioned, so it is
+# opt-in: `uv sync --extra judge`.
+judge = ["deepeval>=2.8.9,<3"]
+
+# Textual / semantic similarity metrics and the plots for Experiment 2.
+analysis = [
+    "scipy>=1.15,<2",
+    "matplotlib>=3.10,<4",
+    "seaborn>=0.13,<0.15",
+    "scikit-learn>=1.6,<2",
+    "nltk>=3.9,<4",
+    "rouge-score>=0.1.2,<0.2",
+    "textdistance>=4.6,<5",
+]
+
+# Sentence embeddings for the semantic-similarity part of Experiment 2.
+# Pulls PyTorch (~1.3 GB), which is why it is separate from `analysis`.
+embeddings = ["sentence-transformers>=4.1,<6"]
+
+dev = ["pytest>=8.0,<9", "ruff>=0.6,<0.15"]
+
+[project.scripts]
+personareact = "personareact.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/gustavolgcr/personareact"
+Thesis = "https://repositorio.ufc.br/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/personareact"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore:.*allowed_objects.*",
+]
