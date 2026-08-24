@@ -35,7 +35,7 @@ Severity is about the **published results**, not the code:
 | [SV-09](#sv-09) | Medium | Failed runs were saved as answers and graded | fixed |
 | [SV-10](#sv-10) | Medium | Nothing checked factual fidelity | fixed (new metric) |
 | [SV-11](#sv-11) | Medium | Everything joined by list position | fixed |
-| [SV-12](#sv-12) | Medium | No inferential statistics; outliers deleted | fixed |
+| [SV-12](#sv-12) | **Critical** | The outlier filter deleted ~19% of the treatments and 0% of the baseline | fixed, quantified |
 | [SV-13](#sv-13) | Medium | Judge model unpinned (a floating alias) | fixed |
 | [SV-14](#sv-14) | Critical | Treatment and baseline queried **different builds** of the database | fixed |
 | [SV-15](#sv-15) | Critical | The summary SQL view inflated every aggregate, median **43×** | fixed |
@@ -360,9 +360,9 @@ and aborts rather than shifting.
 
 ---
 
-## SV-12 — No inferential statistics, and outliers deleted {#sv-12}
+## SV-12 — No inferential statistics, and a filter that favoured the treatments {#sv-12}
 
-**Severity Medium.**
+**Severity Critical.** *Reclassified from Medium once the filter's effect was measured.*
 
 *Original:* four notebooks compute means and standard deviations. `scipy` is a
 declared dependency and never imported. An IQR filter replaces out-of-range
@@ -376,10 +376,54 @@ and H4 rest on differences of 0.01–0.2 points on a 0–10 scale with no test
 attached, and the outlier filter removes precisely the disagreements that would
 show up as variance.
 
+**The outlier filter is worse than it looks, and the effect is measurable.**
+
+The notebook computed IQR bounds **per (approach, model) column with all three
+criteria pooled**, then grouped by criterion. The personalized conditions score
+tightly around 9 on style and language but far lower on data interpretation, so
+pooling makes a whole criterion's worth of legitimate scores look like a low
+tail and deletes it. The ReAct baseline is spread from 3 to 9, so its bounds are
+wide and nothing is removed:
+
+| covid, o3-mini | scores deleted |
+|---|---|
+| PersonaReAct | **19.1%** |
+| ReAct + enriched prompt | **18.3%** |
+| ReAct | **0.0%** |
+
+On *Interpretação e Explicação dos Dados* that lifts PersonaReAct from **6.90 to
+8.81** and leaves ReAct at 3.49. Roughly **two points of the reported gap on
+that criterion are an artefact of the filter**, and the same mechanism inflates
+every personalized cell in Tables 3, 6, 9 and 12 while leaving Tables 1, 4, 7
+and 10 untouched. That is why this entry is Critical rather than Medium: it
+does not merely weaken the evidence, it systematically favours the treatments.
+
 *Fix:* `eval/stats.py` — repetitions collapse to one observation per answer,
 comparisons are paired on `question_id`, significance from Wilcoxon
 signed-rank with Holm correction, effect size as rank-biserial correlation,
 plus a bootstrap CI on the mean paired difference. No outlier removal.
+
+*Reproduction:* `personareact analyze --run <judge_run> --legacy-outliers`
+replays the filter exactly, so the published tables stay regenerable. Verified
+cell by cell against Tables 7–9 (covid, o3-mini): 8.81/8.77, 9.02/9.02,
+9.03/9.03, 9.13/9.13, 3.49/3.49, 4.67/4.64, 6.90/6.87. The residual of at most
+0.03 comes from collapsing judge repetitions per question before averaging,
+which the notebook did not do.
+
+*What the corrected statistics say.* Over the 126 comparisons in
+`e1_tests.csv`:
+
+- **PersonaReAct vs ReAct** — 42/42 significant after Holm correction, all with
+  large effect sizes. H1 holds comfortably.
+- **PersonaReAct vs ReAct + enriched prompt** — only **22/42** significant, and
+  12 of the 42 have a negligible effect size. For covid/o3-mini PersonaReAct is
+  *significantly worse* on data interpretation (−1.01, medium effect) and
+  indistinguishable on the other two criteria.
+
+H3 — "a separação explícita da personalização melhora a organização das
+respostas" — is therefore not supported uniformly. That is a more honest and
+more interesting result than the means alone suggested, and exactly the nuance
+a mean-only analysis could not show.
 
 ---
 
