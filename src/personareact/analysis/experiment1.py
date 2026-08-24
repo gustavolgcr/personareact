@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from ..corpus.schema import read_jsonl
@@ -42,6 +43,58 @@ def load_scores(judge_run_id: str) -> pd.DataFrame:
     if frame.empty:
         raise ValueError(f"results/{judge_run_id}/scores.jsonl is empty")
     return frame
+
+
+def legacy_iqr_filter(frame: pd.DataFrame) -> pd.DataFrame:
+    """Reproduce the outlier removal the thesis notebooks applied.
+
+    The notebook laid the scores out with one column per (approach, model) and
+    one row per (question, criterion, repetition), then computed IQR bounds
+    **per column, with all three criteria pooled**, and replaced anything
+    outside them with NaN before grouping by criterion.
+
+    That pooling is what makes the filter asymmetric. The personalized
+    conditions score tightly around 9 on style and language but around 7 on
+    data interpretation, so pooling makes a whole criterion's worth of
+    legitimate scores look like a low tail and deletes it. The ReAct baseline
+    is spread from 3 to 9, so its bounds are wide and nothing is removed:
+
+        personareact / o3-mini / covid    19.1% of scores deleted
+        react_enriched / o3-mini / covid  18.3% deleted
+        react / o3-mini / covid            0.0% deleted
+
+    On "Interpretação e Explicação dos Dados" that lifts PersonaReAct from 6.90
+    to 8.81 while leaving ReAct at 3.49 -- so nearly two points of the reported
+    gap on that criterion are an artefact of the filter.
+
+    Reproduced here, exactly, so the published tables stay regenerable. It is
+    not the default; see ``docs/ERRATA.md`` (SV-12).
+    """
+    wide = frame.pivot_table(
+        index=["question_id", "criterion", "repetition"],
+        columns=["domain", "approach", "model"],
+        values="score",
+    )
+    for column in wide.columns:
+        q1, q3 = wide[column].quantile(0.25), wide[column].quantile(0.75)
+        iqr = q3 - q1
+        outside = (wide[column] < q1 - 1.5 * iqr) | (wide[column] > q3 + 1.5 * iqr)
+        wide.loc[outside, column] = np.nan
+
+    long = (
+        wide.stack(["domain", "approach", "model"], future_stack=True)
+        .rename("score")
+        .reset_index()
+        .dropna(subset=["score"])
+    )
+    keep = [c for c in ("profile", "difficulty") if c in frame.columns]
+    if keep:
+        long = long.merge(
+            frame[["question_id", *keep]].drop_duplicates("question_id"),
+            on="question_id",
+            how="left",
+        )
+    return long
 
 
 def summary_tables(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -155,9 +208,15 @@ def plot_criterion_bars(frame: pd.DataFrame, output_dir: Path) -> list[Path]:
 
 
 def run(
-    judge_run_id: str, *, tables_dir: Path | None = None, figures_dir: Path | None = None
+    judge_run_id: str,
+    *,
+    tables_dir: Path | None = None,
+    figures_dir: Path | None = None,
+    legacy_outliers: bool = False,
 ) -> dict[str, Path]:
     frame = load_scores(judge_run_id)
+    if legacy_outliers:
+        frame = legacy_iqr_filter(frame)
     tables_dir = ensure_dir(tables_dir or TABLES_DIR / judge_run_id)
     figures_dir = ensure_dir(figures_dir or FIGURES_DIR / judge_run_id)
 
@@ -166,6 +225,16 @@ def run(
         path = tables_dir / f"{name}.csv"
         table.to_csv(path, index=False)
         written[name] = path
+
+    if legacy_outliers:
+        (tables_dir / "e1_NOTE_legacy_outliers.txt").write_text(
+            "These tables reproduce the thesis notebooks, including the IQR "
+            "outlier filter that deletes ~19% of the personalized conditions' "
+            "scores and 0% of the ReAct baseline's. See docs/ERRATA.md, SV-12. "
+            "Do not use them as corrected results.\n",
+            encoding="utf-8",
+        )
+        written["e1_NOTE_legacy_outliers"] = tables_dir / "e1_NOTE_legacy_outliers.txt"
 
     tests = significance_table(frame)
     if not tests.empty:

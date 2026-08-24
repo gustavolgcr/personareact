@@ -329,12 +329,24 @@ def analyze_command(
     run: Annotated[str, typer.Option(help="judge run id (E1) or generation run id (E2)")],
     experiment: Annotated[str, typer.Option(help="e1 | e2")] = "e1",
     reference_approach: Annotated[str | None, typer.Option(help="E2 neutral reference")] = None,
+    legacy_outliers: Annotated[
+        bool,
+        typer.Option(
+            "--legacy-outliers",
+            help="E1 only: reproduce the thesis IQR filter (see docs/ERRATA.md, SV-12)",
+        ),
+    ] = False,
 ) -> None:
     """Regenerate every table and figure for a run."""
     if experiment == "e1":
         from .analysis import experiment1
 
-        written = experiment1.run(run)
+        written = experiment1.run(run, legacy_outliers=legacy_outliers)
+        if legacy_outliers:
+            console.print(
+                "[yellow]legacy outlier filter applied: these reproduce the thesis, "
+                "they are not corrected results[/yellow]"
+            )
     elif experiment == "e2":
         from .analysis import experiment2
 
