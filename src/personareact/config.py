@@ -119,6 +119,10 @@ class ApproachConfig:
     use_tailor: bool
     max_iterations: int = 5
     question_suffix: str | None = None
+    #: What the Tailor step is shown: "context" (the whole scratchpad, which is
+    #: what the thesis implementation did) or "observations" (only O*, which is
+    #: what section 4.2 formalises). See AgentState.tailor_input.
+    tailor_sees: str = "context"
     description: str = ""
 
     @property
@@ -136,6 +140,7 @@ class ApproachConfig:
             use_tailor=bool(raw["use_tailor"]),
             max_iterations=int(raw.get("max_iterations", 5)),
             question_suffix=raw.get("question_suffix"),
+            tailor_sees=raw.get("tailor_sees", "context"),
             description=raw.get("description", ""),
         )
 

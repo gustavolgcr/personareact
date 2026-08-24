@@ -43,6 +43,11 @@ Reproducibility and engineering findings (no runner, twelve repositories,
 absolute paths in notebooks, no manifests, uninstallable packages, twelve `.env`
 files) are addressed by the repository's existence and are not repeated here.
 
+[`REVIEW.md`](REVIEW.md) assesses the implementation as *code* -- fidelity to
+the formalisation in chapter 4 and the quality of the LangGraph usage -- and
+covers findings that do not change a published number, such as the fact that
+the outer Reason-Act loop iterates twice in 42 of 47 surviving traces.
+
 ---
 
 ## SV-01 — "Distância de Edição" is a similarity, read as a distance {#sv-01}

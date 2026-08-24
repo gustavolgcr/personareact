@@ -98,12 +98,12 @@ def _slug(text: str) -> str:
 
 
 def estimate_cost(cells: Iterable[CellConfig], questions_per_cell: int) -> dict[str, float]:
-    """Rough pre-flight estimate.
+    """Pre-flight estimate from measured per-approach token counts.
 
-    Deliberately coarse -- its job is to stop someone from starting a US$400
-    sweep by accident, not to be accurate to the cent. Assumes ~2.5k input and
-    ~600 output tokens per agent call, and 3 model calls per question for the
-    tool-using approaches (reason, SQL agent, tailor).
+    Its job is to stop someone starting a US$400 sweep by accident, not to be
+    accurate to the cent: the figures in ``PER_QUESTION_TOKENS`` come from one
+    model on one question, and the nested SQL agent's usage varies a lot with
+    how many schema lookups a question needs.
     """
     total_in = total_out = 0.0
     usd = 0.0

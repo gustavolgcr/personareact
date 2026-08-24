@@ -144,3 +144,52 @@ class TestTailorBackwardCompatibility:
     def test_personalized_answer_wins_when_present(self):
         state = AgentState(question="q", standard_answer="plain", personalized_answer="tailored")
         assert state.final_answer == "tailored"
+
+
+class TestTailorInput:
+    """Section 4.2 formalises tau : P x O* -> M -- profile and *observations*.
+
+    The thesis implementation passed the whole scratchpad, which also contains
+    the line ``Standard Answer: ...``, so the Tailor rewrote a finished answer
+    instead of composing from the retrieved facts. Both behaviours are now
+    selectable, which turns an unnoticed gap into a measurable ablation.
+    """
+
+    @staticmethod
+    def state() -> AgentState:
+        state = AgentState(question="q", profile="Torcedor do Time")
+        state.scratchpad = [
+            "Question: q",
+            "Thought: preciso consultar o banco",
+            "Action: consulta_banco_sql",
+            "Action Input: qual a velocidade media?",
+            'Observation: {"Velocidade_Media": 1.36}',
+            "Standard Answer: A velocidade media foi de 1.36 m/s.",
+        ]
+        return state
+
+    def test_context_mode_includes_the_standard_answer(self):
+        assert "Standard Answer" in self.state().tailor_input("context")
+
+    def test_observations_mode_excludes_it(self):
+        rendered = self.state().tailor_input("observations")
+        assert "Standard Answer" not in rendered
+        assert "Thought" not in rendered
+        assert "1.36" in rendered
+
+    def test_observations_mode_falls_back_when_nothing_was_retrieved(self):
+        state = AgentState(question="q", profile="p")
+        state.scratchpad = ["Question: q", "Standard Answer: uma resposta"]
+        assert state.tailor_input("observations") == state.history()
+
+    def test_default_reproduces_the_thesis_behaviour(self):
+        from personareact.config import ApproachConfig
+
+        assert ApproachConfig.load("personareact").tailor_sees == "context"
+
+    def test_the_ablation_config_selects_the_formalisation(self):
+        from personareact.config import ApproachConfig
+
+        config = ApproachConfig.load("personareact-obs")
+        assert config.tailor_sees == "observations"
+        assert config.use_tailor is True

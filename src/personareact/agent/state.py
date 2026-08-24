@@ -50,3 +50,35 @@ class AgentState:
 
     def history(self) -> str:
         return "\n".join(self.scratchpad)
+
+    def observations(self) -> list[str]:
+        """Just the observations -- the ``O*`` of the thesis' formalisation."""
+        prefix = "Observation: "
+        return [line[len(prefix) :] for line in self.scratchpad if line.startswith(prefix)]
+
+    def tailor_input(self, sees: str) -> str:
+        """What the Tailor step is shown.
+
+        Section 4.2 formalises the personalization function as
+        ``tau : P x O* -> M`` -- profile and *observations*. The original
+        implementation passed the whole scratchpad, which also contains the
+        thoughts, the actions and, critically, the line ``Standard Answer:
+        ...``. So the Tailor was handed a finished answer to rewrite rather
+        than the retrieved facts to compose from, which weakens section 4.4's
+        claim of "dissociação entre o que o agente observa e o que é
+        comunicado": the wording of the neutral answer anchors the
+        personalized one.
+
+        ``context`` reproduces the thesis behaviour and is the default so the
+        comparison holds. ``observations`` implements the formalisation, and
+        makes the difference between the two a measurable ablation rather than
+        an unnoticed gap.
+        """
+        if sees == "observations":
+            observations = self.observations()
+            if not observations:
+                # Nothing was retrieved (a tool-free approach, or a failed
+                # lookup): fall back rather than personalize against nothing.
+                return self.history()
+            return "\n".join(f"Observation: {o}" for o in observations)
+        return self.history()

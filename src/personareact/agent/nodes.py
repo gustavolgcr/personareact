@@ -203,7 +203,7 @@ def make_tailor_node(rt: AgentRuntime):
             "tailor",
             question=state.question,
             profile=state.profile,
-            history=state.history(),
+            history=state.tailor_input(rt.approach.tailor_sees),
             profile_guidance=render_profile_guidance(rt.domain.prompt_dir),
         )
         result = rt.llm.structured(TailorOutput, prompt)

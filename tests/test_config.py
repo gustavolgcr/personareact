@@ -40,9 +40,17 @@ class TestApproaches:
             tailor,
         )
 
-    def test_only_personareact_and_enriched_use_the_profile(self):
+    def test_only_the_personalizing_approaches_use_the_profile(self):
         using = {n for n in list_configs("approach") if ApproachConfig.load(n).uses_profile}
-        assert using == {"personareact", "react_enriched"}
+        assert using == {"personareact", "personareact-obs", "react_enriched"}
+
+    def test_the_profile_blind_approaches_stay_blind(self):
+        for name in ("standard", "cot", "act", "react"):
+            assert ApproachConfig.load(name).uses_profile is False
+
+    def test_tailor_sees_is_a_known_mode(self):
+        for name in list_configs("approach"):
+            assert ApproachConfig.load(name).tailor_sees in {"context", "observations"}
 
     def test_enriched_suffix_carries_the_profile_placeholder(self):
         suffix = ApproachConfig.load("react_enriched").question_suffix

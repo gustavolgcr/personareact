@@ -19,7 +19,8 @@ records.
 > thesis. Several defects in the original affect how the published results
 > should be read. They are all documented, with evidence, in
 > [`docs/ERRATA.md`](docs/ERRATA.md) — read it before citing any number from
-> chapter 6.
+> chapter 6. [`docs/REVIEW.md`](docs/REVIEW.md) assesses the original
+> LangChain/LangGraph implementation against what chapters 4 and 5 describe.
 
 ---
 
