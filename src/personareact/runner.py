@@ -41,6 +41,22 @@ class CostLimitExceeded(RuntimeError):
     pass
 
 
+#: (input, output) tokens per question, measured on the `smoke` experiment with
+#: gpt-4.1-mini rather than guessed. The nested Text-to-SQL agent dominates:
+#: `act`, which is nothing but a tool call, is the most expensive approach of
+#: the six because the agent lists tables and reads schemas before querying.
+#: Re-measure with `personareact run --experiment smoke` if the prompts change.
+PER_QUESTION_TOKENS: dict[str, tuple[int, int]] = {
+    "standard": (250, 50),
+    "cot": (300, 220),
+    "act": (24000, 400),
+    "react": (7400, 360),
+    "react_enriched": (5700, 350),
+    "personareact": (5500, 390),
+    "_default": (7000, 400),
+}
+
+
 @dataclass
 class RunOptions:
     run_id: str | None = None
@@ -92,11 +108,9 @@ def estimate_cost(cells: Iterable[CellConfig], questions_per_cell: int) -> dict[
     total_in = total_out = 0.0
     usd = 0.0
     for cell in cells:
-        calls = 1 if not cell.approach.use_tools else 3
-        if cell.approach.use_tailor:
-            calls += 1
-        n_in = 2500 * calls * questions_per_cell
-        n_out = 600 * calls * questions_per_cell
+        per_question = PER_QUESTION_TOKENS.get(cell.approach.name, PER_QUESTION_TOKENS["_default"])
+        n_in = per_question[0] * questions_per_cell
+        n_out = per_question[1] * questions_per_cell
         total_in += n_in
         total_out += n_out
         usd += (
@@ -208,9 +222,9 @@ def run_cells(
                 manifest.save(directory)
                 raise CostLimitExceeded(manifest.notes[-1])
 
-            before = agent.llm.usage.usd
+            before = agent.usage.usd
             result = agent.answer(question, profile=cell.profile)
-            spent = agent.llm.usage.usd - before
+            spent = agent.usage.usd - before
 
             batch.append(
                 Answer(
@@ -228,8 +242,8 @@ def run_cells(
                     iterations=result.iterations,
                     scratchpad=result.scratchpad,
                     sql_calls=result.sql_calls,
-                    input_tokens=agent.llm.usage.input_tokens,
-                    output_tokens=agent.llm.usage.output_tokens,
+                    input_tokens=agent.usage.input_tokens,
+                    output_tokens=agent.usage.output_tokens,
                     usd=round(spent, 6),
                     elapsed_s=result.elapsed_s,
                 )
@@ -240,8 +254,8 @@ def run_cells(
                 _log(options, f"    ! {question.question_id}: {result.error}")
             manifest.usd += spent
 
-        manifest.input_tokens += agent.llm.usage.input_tokens
-        manifest.output_tokens += agent.llm.usage.output_tokens
+        manifest.input_tokens += agent.usage.input_tokens
+        manifest.output_tokens += agent.usage.output_tokens
 
         # Written per cell, so an interrupted sweep loses at most one cell.
         append_jsonl(answers_path, batch)

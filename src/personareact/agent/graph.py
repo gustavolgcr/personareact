@@ -16,7 +16,7 @@ from langgraph.graph import END, StateGraph
 
 from ..config import ApproachConfig, DomainConfig, ModelConfig
 from ..corpus.schema import Question
-from ..llm import LLMClient, LLMError, build_client
+from ..llm import LLMClient, LLMError, Usage, build_client
 from ..tools.text_to_sql import TextToSQLTool, is_tool_error
 from .nodes import (
     AgentRuntime,
@@ -109,6 +109,21 @@ class Agent:
         )
         self.runtime = AgentRuntime(approach=approach, domain=domain, llm=self.llm, tool=tool)
         self.graph = build_graph(self.runtime)
+
+    @property
+    def usage(self) -> Usage:
+        """Everything this agent spent, outer loop and nested SQL agent together.
+
+        The nested Text-to-SQL agent runs its own model and is the larger
+        consumer -- it lists tables, reads schemas, then queries. Reporting only
+        the outer loop understated a run's cost by roughly five times, and made
+        the ``act`` approach look free.
+        """
+        total = Usage()
+        total.add(self.llm.usage)
+        if self.runtime.tool is not None:
+            total.add(self.runtime.tool.usage)
+        return total
 
     def question_text(self, question: Question, profile: str | None) -> str:
         """Apply the approach's question transformation.

@@ -39,6 +39,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from ..config import DomainConfig, ModelConfig
+from ..llm import Usage
 from ..manifest import sha256_file
 from ..prompts import render
 
@@ -137,6 +138,12 @@ class TextToSQLTool:
     api_key: str | None = None
     verbose: bool = False
     calls: list[dict[str, Any]] = field(default_factory=list)
+    #: Tokens and cost spent inside the nested Text-to-SQL agent. Counted
+    #: separately from the outer agent because it is a *different* model
+    #: (``sql_model``) and because it is by far the larger consumer -- the
+    #: nested agent lists tables, reads schemas, then queries. Leaving it
+    #: uncounted made a run look about five times cheaper than it was.
+    usage: Usage = field(default_factory=Usage)
 
     name: str = "consulta_banco_sql"
     _agent: Any = field(default=None, repr=False)
@@ -168,6 +175,19 @@ class TextToSQLTool:
             self._agent = create_react_agent(llm, toolkit.get_tools(), prompt=prompt)
         return self._agent
 
+    def _record_usage(self, message: Any) -> None:
+        meta = getattr(message, "usage_metadata", None) or {}
+        inp = int(meta.get("input_tokens", 0) or 0)
+        out = int(meta.get("output_tokens", 0) or 0)
+        if not (inp or out):
+            return
+        self.usage.input_tokens += inp
+        self.usage.output_tokens += out
+        self.usage.usd += (
+            inp * self.model.usd_per_1m_input + out * self.model.usd_per_1m_output
+        ) / 1_000_000
+        self.usage.calls += 1
+
     def __call__(self, question: str) -> str:
         started = time.perf_counter()
         record: dict[str, Any] = {"input": question, "queries": [], "ok": True}
@@ -178,9 +198,11 @@ class TextToSQLTool:
             if not messages:
                 raise DatabaseError("Text-to-SQL agent returned no messages")
 
+            before = self.usage.usd
             for message in messages:
                 for query in _extract_queries(message):
                     record["queries"].append(query)
+                self._record_usage(message)
                 if self.verbose:
                     printer = getattr(message, "pretty_print", None)
                     if printer:
@@ -188,6 +210,7 @@ class TextToSQLTool:
 
             answer = getattr(messages[-1], "content", "") or ""
             record["output"] = answer
+            record["usd"] = round(self.usage.usd - before, 6)
             return answer
         except Exception as exc:
             record["ok"] = False

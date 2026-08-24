@@ -12,6 +12,7 @@ the corrected runs stay comparable with the published ones. One typo is fixed
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -118,6 +119,34 @@ def get_criterion(key: str) -> CriterionSpec:
     )
 
 
+def _ensure_pricing(model: str) -> None:
+    """Teach deepeval the price of a dated model snapshot.
+
+    deepeval 2.9.7 accepts ``gpt-4o-2024-11-20`` as a valid model but prices
+    only the floating alias ``gpt-4o``, so pinning the judge -- which is the
+    whole point of SV-13 -- crashes its cost calculation with ``KeyError:
+    'input'``. Rather than give up the pin, we copy the base alias's price onto
+    the snapshot.
+
+    This is a shim around a library limitation, not a correction to a price: a
+    dated snapshot and its alias cost the same at the moment the alias points
+    at it.
+    """
+    try:
+        from deepeval.models.llms import openai_model
+    except ImportError:  # pragma: no cover - handled by the caller
+        return
+
+    pricing = getattr(openai_model, "model_pricing", None)
+    if not isinstance(pricing, dict) or model in pricing:
+        return
+
+    # "gpt-4o-2024-11-20" -> "gpt-4o";  "o3-mini-2025-01-31" -> "o3-mini"
+    base = re.sub(r"-\d{4}-\d{2}-\d{2}$", "", model)
+    if base in pricing:
+        pricing[model] = pricing[base]
+
+
 def build_geval_metrics(keys: list[str], *, model: str) -> list[Any]:
     """Instantiate deepeval G-Eval metrics with the judge model pinned.
 
@@ -134,6 +163,8 @@ def build_geval_metrics(keys: list[str], *, model: str) -> list[Any]:
         raise ImportError(
             "judging needs the `judge` extra:\n    uv pip install -e '.[judge]'"
         ) from exc
+
+    _ensure_pricing(model)
 
     metrics = []
     for key in keys:
