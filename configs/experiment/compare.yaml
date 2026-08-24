@@ -1,0 +1,24 @@
+name: compare
+description: >-
+  A bounded head-to-head between the corrected implementation and the thesis
+  one, with everything else held constant: same questions, same models, same
+  profiles, same judge, same harness.
+
+  Six approaches: react / react_enriched / personareact, each in its corrected
+  form and its `-thesis` form. Two models, one with reasoning (o3-mini) and one
+  without (gpt-4.1-mini), which is the axis H4 is about. Two profiles, one
+  expressive (Torcedor) and one technical (Técnico), which is where the Tailor
+  step should behave differently. Five questions, easy, soccer.
+
+  24 cells, 120 answers. Enough to see direction and effect size, not enough to
+  settle anything on its own.
+
+domains: [soccer]
+approaches:
+  [react, react-thesis, react_enriched, react_enriched-thesis,
+   personareact, personareact-thesis]
+models: [o3-mini, gpt-4.1-mini]
+difficulties: [easy]
+profiles: ["Torcedor do Time", "Técnico do Time"]
+limit_questions: 5
+judge: geval-gpt4o-2024-11-20

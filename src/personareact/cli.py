@@ -336,6 +336,14 @@ def analyze_command(
             help="E1 only: reproduce the thesis IQR filter (see docs/ERRATA.md, SV-12)",
         ),
     ] = False,
+    semantic: Annotated[
+        bool,
+        typer.Option(
+            "--semantic",
+            help="E2 only: add embedding cosine similarity and the t-SNE projection "
+            "(needs the `embeddings` extra)",
+        ),
+    ] = False,
 ) -> None:
     """Regenerate every table and figure for a run."""
     if experiment == "e1":
@@ -350,7 +358,7 @@ def analyze_command(
     elif experiment == "e2":
         from .analysis import experiment2
 
-        written = experiment2.run(run, reference_approach=reference_approach)
+        written = experiment2.run(run, reference_approach=reference_approach, semantic=semantic)
     else:
         raise typer.BadParameter("--experiment must be e1 or e2")
 

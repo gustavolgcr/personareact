@@ -69,7 +69,32 @@ personareact judge --run 2026-08-23T1400Z-e1
 
 # regenerate every table and figure for that run
 personareact analyze --run 2026-08-23T1400Z-e1
+
+# reproduce the thesis tables exactly, IQR filter and all
+personareact analyze --run <judge_run> --legacy-outliers
+
+# Experiment 2, including embeddings and the t-SNE projection
+personareact analyze --run <run> --experiment e2 --semantic
 ```
+
+### What regenerates
+
+| Thesis | Command output |
+|---|---|
+| Tables 1–12 (means and SD per model) | `e1_means.csv`, plus `e1_by_profile.csv` and `e1_by_difficulty.csv` |
+| — *(the thesis has no significance tests)* | `e1_tests.csv`: paired Wilcoxon, Holm correction, effect sizes, bootstrap CIs |
+| Figures 6–8, 12–14 | `e1_<domain>_<criterion>.png` |
+| Tables 13–16, 27–30 | `e2_by_question.csv`, `e2_by_profile.csv` |
+| Tables 17–18 | `e2_distribution.csv` |
+| Figures 18–19, 27–28 | `e2_<domain>_<model>_by_question.png` |
+| Figures 20–21, 29–30 | `e2_<domain>_<model>_by_profile.png` |
+| Figures 22, 31 | `e2_<domain>_distribution_boxplots.png` |
+| Figures 23–26 | `e2_<domain>_<model>_projection.png` *(needs `--semantic`)* |
+
+The E1 tables reproduce the published ones cell by cell **only** with
+`--legacy-outliers`. Without it the numbers differ, because the thesis' filter
+deleted about 19% of the personalized conditions' scores and none of the
+baseline's — see [`docs/ERRATA.md`](docs/ERRATA.md), SV-12.
 
 `personareact list` shows every available domain, approach, model, judge and
 experiment. `personareact runs` lists the runs on disk.

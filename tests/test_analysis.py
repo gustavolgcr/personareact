@@ -121,3 +121,58 @@ class TestSignificance:
     def test_holm_correction_is_reported_alongside_the_raw_p(self):
         results = significance_table(make_scores())
         assert (results.p_holm >= results.p_value - 1e-12).all()
+
+
+class TestExperiment2Figures:
+    """The figure types the thesis has and the first port did not."""
+
+    @staticmethod
+    def pairs() -> pd.DataFrame:
+        rng = np.random.default_rng(1)
+        rows = []
+        for question in range(6):
+            for profile in ("Torcedor do Time", "Técnico do Time", "Fisioterapeuta do Time"):
+                rows.append(
+                    {
+                        "question_id": f"soccer-easy-{question:02d}-p",
+                        "neutral_id": f"soccer-easy-{question:02d}-neutral",
+                        "domain": "soccer",
+                        "approach": "personareact",
+                        "model": "gpt-4.1-mini",
+                        "profile": profile,
+                        "difficulty": "easy",
+                        "rouge_l": float(rng.uniform(0.1, 0.3)),
+                        "bleu": float(rng.uniform(0, 0.1)),
+                        "edit_similarity": float(rng.uniform(0.1, 0.3)),
+                        "edit_distance": float(rng.uniform(0.7, 0.9)),
+                    }
+                )
+        return pd.DataFrame(rows)
+
+    def test_per_question_bars_are_produced(self, tmp_path):
+        from personareact.analysis.experiment2 import plot_question_bars
+
+        written = plot_question_bars(self.pairs(), tmp_path)
+        assert [p.name for p in written] == ["e2_soccer_gpt-4.1-mini_by_question.png"]
+        assert written[0].stat().st_size > 0
+
+    def test_distribution_boxplots_are_produced(self, tmp_path):
+        from personareact.analysis.experiment2 import plot_metric_boxplots
+
+        written = plot_metric_boxplots(self.pairs(), tmp_path)
+        assert [p.name for p in written] == ["e2_soccer_distribution_boxplots.png"]
+
+    def test_the_projection_needs_enough_points(self, tmp_path):
+        """Fewer than six answers cannot be projected; it must not raise."""
+        from personareact.analysis.experiment2 import plot_projection
+
+        assert plot_projection(self.pairs().head(3), [], tmp_path) == []
+
+    def test_semantic_columns_are_absent_unless_requested(self):
+        """The embeddings extra pulls PyTorch, so it stays opt-in."""
+        import inspect
+
+        from personareact.analysis.experiment2 import build_pairs, run
+
+        assert inspect.signature(build_pairs).parameters["semantic"].default is False
+        assert inspect.signature(run).parameters["semantic"].default is False
