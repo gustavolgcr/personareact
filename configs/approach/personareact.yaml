@@ -8,15 +8,17 @@ description: >-
 use_reasoning: true
 use_tools: true
 use_tailor: true
-max_iterations: 5
+
+toolset: primitives
+max_iterations: 8
 
 # What the Tailor step is shown.
+#   observations  only O*, which is what section 4.2 formalises: tau maps the
+#                 profile and the *observations* to the final message. This is
+#                 the default because it is what the thesis describes.
 #   context       the whole scratchpad -- thoughts, actions, observations AND
-#                 the standard answer. This is what the thesis implementation
-#                 did, so it is the default and keeps results comparable.
-#   observations  only O*, which is what section 4.2 actually formalises
-#                 (tau : P x O* -> M).
-# The difference is worth measuring: with `context`, the Tailor rewrites a
-# finished answer and its wording anchors the result; with `observations` it
-# composes from the retrieved facts. See configs/approach/personareact-obs.yaml.
-tailor_sees: context
+#                 the line "Standard Answer: ...". This is what the thesis
+#                 implementation actually did, so the Tailor rewrote a finished
+#                 answer instead of composing from the retrieved facts. See
+#                 configs/approach/personareact-thesis.yaml.
+tailor_sees: observations

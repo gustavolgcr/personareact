@@ -1,9 +1,19 @@
 name: react
 display_name: ReAct
 description: >-
-  The Yao et al. (2023) Reason-Act cycle. Receives the profile's phrasing of
-  the question, but no profile information anywhere in its prompt.
+  The Yao et al. (2023) Reason-Act cycle over primitive SQL tools, so the loop
+  genuinely interleaves reasoning and acting. Receives the profile's phrasing
+  of the question, but no profile information anywhere in its prompt.
 use_reasoning: true
 use_tools: true
 use_tailor: false
-max_iterations: 5
+
+# See configs/approach/react-thesis.yaml for the original behaviour, where the
+# single tool was itself a ReAct agent and the outer loop ran exactly twice in
+# 42 of 47 traces (docs/REVIEW.md, section 2.2).
+toolset: primitives
+
+# Raised from the thesis' 5 because primitives need more steps for the same
+# work: list tables, describe them, query, and possibly correct a SQL error.
+# With the nested agent all of that happened inside one call.
+max_iterations: 8

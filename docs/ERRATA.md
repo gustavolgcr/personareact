@@ -30,7 +30,8 @@ Severity is about the **published results**, not the code:
 | [SV-05](#sv-05) | High | One ReAct answer set scored six times, counted as six observations | fixed |
 | [SV-06](#sv-06) | High | The medical case study ran with football prompts | fixed, needs regeneration |
 | [SV-07](#sv-07) | High | The agent's chosen `action_input` was discarded | fixed |
-| [SV-08](#sv-08) | High | The SQL model was coupled to the agent model | fixed (configurable) |
+| [SV-08](#sv-08) | High | The SQL model was coupled to the agent model | solved (no second model) |
+| [SV-16](#sv-16) | High | The Tailor received the answer it should compose; units lost | fixed |
 | [SV-09](#sv-09) | Medium | Failed runs were saved as answers and graded | fixed |
 | [SV-10](#sv-10) | Medium | Nothing checked factual fidelity | fixed (new metric) |
 | [SV-11](#sv-11) | Medium | Everything joined by list position | fixed |

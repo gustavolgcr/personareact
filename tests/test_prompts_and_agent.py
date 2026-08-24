@@ -182,14 +182,14 @@ class TestTailorInput:
         state.scratchpad = ["Question: q", "Standard Answer: uma resposta"]
         assert state.tailor_input("observations") == state.history()
 
-    def test_default_reproduces_the_thesis_behaviour(self):
+    def test_the_default_follows_the_formalisation(self):
         from personareact.config import ApproachConfig
 
-        assert ApproachConfig.load("personareact").tailor_sees == "context"
+        assert ApproachConfig.load("personareact").tailor_sees == "observations"
 
-    def test_the_ablation_config_selects_the_formalisation(self):
+    def test_the_thesis_variant_keeps_the_original_behaviour(self):
         from personareact.config import ApproachConfig
 
-        config = ApproachConfig.load("personareact-obs")
-        assert config.tailor_sees == "observations"
+        config = ApproachConfig.load("personareact-thesis")
+        assert config.tailor_sees == "context"
         assert config.use_tailor is True

@@ -16,6 +16,37 @@ expects_views:
 
 prompt_dir: soccer
 
+# Column -> unit. Appended to result columns by the SQL tools so the unit
+# travels with the observation instead of being inferred downstream. A legacy
+# answer reports "1.362 km/h" for Velocidade_Media, which is metres per second.
+units:
+  Velocidade_Media: m/s
+  Velocidade: m/s
+  Desvio_Velocidade: m/s
+  Aceleracao_Media: m/s2
+  Desvio_Aceleracao: m/s2
+  Tempo_Parado: s
+  Tempo_Caminhando: s
+  Tempo_Correndo: s
+  Tempo_Sprintando: s
+  Tempo_Total_Parado: s
+  Tempo_Total_Caminhando: s
+  Tempo_Total_Correndo: s
+  Tempo_Total_Sprintando: s
+  Intervalo_Tempo: s
+  Distancia: m
+  Distancia_Total: m
+  Elevacao: m
+  Direcao: graus
+  Media_Mudanca_Direcao: graus
+  Coeficiente_Variacao_Velocidade: adimensional
+  Quantidade_Sprints: contagem
+  Total_Sprints: contagem
+  Quantidade_Alta_Aceleracao: contagem
+  Quantidade_Alta_Desaceleracao: contagem
+  Quantidade_Mudanca_Direcao: contagem
+  Total_Segmentos: contagem
+
 profiles:
   - Torcedor do Time
   - Técnico do Time

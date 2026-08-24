@@ -6,4 +6,9 @@ description: >-
 use_reasoning: false
 use_tools: true
 use_tailor: false
+
+# Act-only keeps the nested agent: with primitives there is no single call that
+# can answer a question, and inserting reasoning between calls would stop it
+# being Act-only.
+toolset: agent
 max_iterations: 1

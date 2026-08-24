@@ -17,6 +17,7 @@ from typing_extensions import TypedDict
 from ..config import ApproachConfig, DomainConfig
 from ..llm import LLMClient
 from ..prompts import render, render_profile_guidance
+from ..tools.sql_primitives import TOOL_DESCRIPTIONS, SQLPrimitives
 from ..tools.text_to_sql import TextToSQLTool
 from .state import AgentState
 
@@ -39,14 +40,58 @@ class TailorOutput(TypedDict):
 
 @dataclass
 class AgentRuntime:
+    """Everything a node needs, closed over rather than stored in the state."""
+
     approach: ApproachConfig
     domain: DomainConfig
     llm: LLMClient
+    #: The nested Text-to-SQL agent, for `toolset: agent` (the thesis path).
     tool: TextToSQLTool | None = None
+    #: The primitive SQL tools, for `toolset: primitives` (the default).
+    primitives: SQLPrimitives | None = None
 
     @property
     def tool_names(self) -> list[str]:
+        if self.primitives is not None:
+            return list(self.primitives.as_registry())
         return [self.tool.name] if self.tool else []
+
+    @property
+    def has_tools(self) -> bool:
+        return self.primitives is not None or self.tool is not None
+
+    def describe_tools(self) -> str:
+        if self.primitives is not None:
+            return "\n".join(
+                f"- {name}: {TOOL_DESCRIPTIONS[name]}" for name in self.primitives.as_registry()
+            )
+        if self.tool is not None:
+            return f"- {self.tool.name}: {self.tool.description}"
+        return "(nenhuma)"
+
+    def call_tool(self, name: str, argument: str) -> str:
+        """Run one action. Unknown names come back as an observation, not a crash."""
+        if self.primitives is not None:
+            return self.primitives(name, argument)
+        if self.tool is not None:
+            if name and name != self.tool.name:
+                return (
+                    f"[Ferramenta desconhecida: {name!r}. "
+                    f"Disponíveis: {', '.join(self.tool_names)}]"
+                )
+            return self.tool(argument)
+        raise RuntimeError("call_tool reached with no tools configured")
+
+    def tool_calls(self) -> list[dict[str, Any]]:
+        if self.primitives is not None:
+            return list(self.primitives.calls)
+        return list(self.tool.calls) if self.tool else []
+
+    def reset_calls(self) -> None:
+        if self.primitives is not None:
+            self.primitives.calls = []
+        if self.tool is not None:
+            self.tool.calls = []
 
 
 # --------------------------------------------------------------------------- #
@@ -57,13 +102,15 @@ class AgentRuntime:
 def make_reason_node(rt: AgentRuntime):
     """Reason step for tool-using approaches (react, react_enriched, personareact)."""
 
+    template = "reason_tools" if rt.primitives is not None else "reason"
+
     def reason_node(state: AgentState) -> dict[str, Any]:
-        prompt = render(
-            "reason",
-            question=state.question,
-            history=state.history(),
-            tool_names=", ".join(rt.tool_names),
-        )
+        values: dict[str, Any] = {"question": state.question, "history": state.history()}
+        if template == "reason_tools":
+            values["tools"] = rt.describe_tools()
+        else:
+            values["tool_names"] = ", ".join(rt.tool_names)
+        prompt = render(template, **values)
         result = rt.llm.structured(ReasoningOutput, prompt)
 
         scratchpad = list(state.scratchpad)
@@ -138,16 +185,21 @@ def make_act_node(rt: AgentRuntime):
     """Execute the tool with the input the Reason step actually chose."""
 
     def act_node(state: AgentState) -> dict[str, Any]:
-        if rt.tool is None:
-            raise RuntimeError("act_node reached with no tool configured")
-        if state.action and state.action != rt.tool.name:
-            observation = (
-                f"[Ferramenta desconhecida: {state.action!r}. "
-                f"Disponíveis: {', '.join(rt.tool_names)}]"
-            )
-        else:
-            # SV-07: use action_input, not the raw question.
-            observation = rt.tool(state.action_input or state.question)
+        if not rt.has_tools:
+            raise RuntimeError("act_node reached with no tools configured")
+
+        # SV-07: the input is the one the Reason step chose, not the raw
+        # question. With primitives that matters on every single step -- a
+        # table name, a schema request, a SQL query.
+        #
+        # An empty argument is *legitimate* for a primitive (`listar_tabelas`
+        # takes none), so it is passed through as-is. Only the single-tool
+        # path falls back to the question, because there the tool's argument
+        # is the question.
+        argument = state.action_input
+        if not argument and rt.primitives is None:
+            argument = state.question
+        observation = rt.call_tool(state.action, argument)
 
         scratchpad = list(state.scratchpad)
         scratchpad.append(f"Observation: {observation}")
@@ -157,7 +209,7 @@ def make_act_node(rt: AgentRuntime):
             "observation": observation,
             "action": "",
             "action_input": "",
-            "sql_calls": list(rt.tool.calls),
+            "sql_calls": rt.tool_calls(),
         }
 
     return act_node
@@ -168,7 +220,10 @@ def make_act_only_node(rt: AgentRuntime):
 
     def act_only_node(state: AgentState) -> dict[str, Any]:
         if rt.tool is None:
-            raise RuntimeError("act_only_node reached with no tool configured")
+            raise RuntimeError(
+                "the Act-only baseline needs `toolset: agent` -- with primitives "
+                "there is no single call that can answer a question"
+            )
         observation = rt.tool(state.question)
         scratchpad = list(state.scratchpad)
         scratchpad.append(f"Observation: {observation}")
@@ -178,7 +233,7 @@ def make_act_only_node(rt: AgentRuntime):
             "observation": observation,
             "standard_answer": observation,
             "iteration_count": state.iteration_count + 1,
-            "sql_calls": list(rt.tool.calls),
+            "sql_calls": rt.tool_calls(),
         }
 
     return act_only_node

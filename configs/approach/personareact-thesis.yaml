@@ -1,0 +1,14 @@
+name: personareact-thesis
+display_name: PersonaReAct (as implemented in the thesis)
+description: >-
+  Reproduces the 2025 runs exactly: the nested Text-to-SQL agent as the only
+  tool, and a Tailor step that receives the whole scratchpad including the
+  standard answer. Both are deviations from chapter 4 and both are documented
+  in docs/ERRATA.md and docs/REVIEW.md. Use this to reproduce the published
+  results, and `personareact` for the corrected method.
+use_reasoning: true
+use_tools: true
+use_tailor: true
+toolset: agent
+max_iterations: 5
+tailor_sees: context

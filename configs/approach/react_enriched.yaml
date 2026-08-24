@@ -13,5 +13,15 @@ description: >-
 use_reasoning: true
 use_tools: true
 use_tailor: false
-max_iterations: 5
+
+# See configs/approach/react-thesis.yaml for the original behaviour, where the
+# single tool was itself a ReAct agent and the outer loop ran exactly twice in
+# 42 of 47 traces (docs/REVIEW.md, section 2.2).
+toolset: primitives
+
+# Raised from the thesis' 5 because primitives need more steps for the same
+# work: list tables, describe them, query, and possibly correct a SQL error.
+# With the nested agent all of that happened inside one call.
+max_iterations: 8
+
 question_suffix: " Mude a resposta com base no perfil do usuário que fez a pergunta: {profile}."

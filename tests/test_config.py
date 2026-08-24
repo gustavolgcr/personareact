@@ -42,11 +42,39 @@ class TestApproaches:
 
     def test_only_the_personalizing_approaches_use_the_profile(self):
         using = {n for n in list_configs("approach") if ApproachConfig.load(n).uses_profile}
-        assert using == {"personareact", "personareact-obs", "react_enriched"}
+        assert using == {
+            "personareact",
+            "personareact-thesis",
+            "react_enriched",
+            "react_enriched-thesis",
+        }
 
     def test_the_profile_blind_approaches_stay_blind(self):
-        for name in ("standard", "cot", "act", "react"):
+        for name in ("standard", "cot", "act", "react", "react-thesis"):
             assert ApproachConfig.load(name).uses_profile is False
+
+    def test_tool_using_approaches_declare_a_known_toolset(self):
+        for name in list_configs("approach"):
+            config = ApproachConfig.load(name)
+            assert config.toolset in {"primitives", "agent"}
+
+    def test_the_defaults_follow_chapter_four(self):
+        """The primary configs implement what the thesis *describes*."""
+        personareact = ApproachConfig.load("personareact")
+        assert personareact.toolset == "primitives"  # the loop really interleaves
+        assert personareact.tailor_sees == "observations"  # tau(p, O*)
+
+    def test_the_thesis_variants_reproduce_what_was_run(self):
+        """The `-thesis` configs implement what the thesis *did*."""
+        for name in ("react-thesis", "react_enriched-thesis", "personareact-thesis"):
+            config = ApproachConfig.load(name)
+            assert config.toolset == "agent"
+            assert config.max_iterations == 5
+        assert ApproachConfig.load("personareact-thesis").tailor_sees == "context"
+
+    def test_act_only_keeps_the_nested_agent(self):
+        """With primitives there is no single call that answers a question."""
+        assert ApproachConfig.load("act").toolset == "agent"
 
     def test_tailor_sees_is_a_known_mode(self):
         for name in list_configs("approach"):
@@ -57,10 +85,18 @@ class TestApproaches:
         assert suffix and "{profile}" in suffix
 
     def test_no_other_approach_alters_the_question(self):
+        enriched = {"react_enriched", "react_enriched-thesis"}
         for name in list_configs("approach"):
-            if name == "react_enriched":
+            if name in enriched:
                 continue
             assert ApproachConfig.load(name).question_suffix is None
+
+    def test_both_enriched_variants_use_the_same_suffix(self):
+        """The one-line suffix from react/src/main.py:86, in both configs."""
+        assert (
+            ApproachConfig.load("react_enriched").question_suffix
+            == ApproachConfig.load("react_enriched-thesis").question_suffix
+        )
 
 
 class TestDomains:
@@ -138,6 +174,12 @@ class TestExperiments:
         cells = ExperimentConfig.load("e1").cells()
         assert len(cells) == 2 * 3 * 7 * 6 * 2  # domain x approach x model x profile x difficulty
 
+    def test_domains_declare_units_for_their_measures(self):
+        """Units travel with the observation, so they cannot be lost downstream."""
+        soccer = DomainConfig.load("soccer")
+        assert soccer.units["Velocidade_Media"] == "m/s"
+        assert soccer.units["Tempo_Parado"] == "s"
+
     def test_every_approach_runs_on_every_profile(self):
         """The fix for SV-03.
 
@@ -151,8 +193,19 @@ class TestExperiments:
 
     def test_smoke_is_cheap(self):
         config = ExperimentConfig.load("smoke")
-        assert len(config.cells()) == 6
+        assert len(config.cells()) == len(config.approaches)
         assert config.limit_questions == 1
+
+    def test_smoke_covers_both_the_corrected_and_reproduced_paths(self):
+        approaches = set(ExperimentConfig.load("smoke").approaches)
+        assert {"personareact", "personareact-thesis"} <= approaches
+
+    def test_e1_and_e1_thesis_are_the_same_shape(self):
+        """The pair differs only in how each approach is implemented."""
+        corrected = ExperimentConfig.load("e1")
+        thesis = ExperimentConfig.load("e1-thesis")
+        assert len(corrected.cells()) == len(thesis.cells())
+        assert [f"{a}-thesis" for a in corrected.approaches] == thesis.approaches
 
     def test_cell_slugs_are_unique(self):
         cells = ExperimentConfig.load("e1").cells()

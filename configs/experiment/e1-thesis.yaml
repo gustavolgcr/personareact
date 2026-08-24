@@ -1,0 +1,15 @@
+name: e1-thesis
+description: >-
+  Experiment 1 reproduced as it was actually run in 2025: the nested
+  Text-to-SQL agent as the only tool, five iterations, and a Tailor step that
+  sees the whole scratchpad including the standard answer.
+
+  Use this to reproduce the published numbers. Use `e1` for the corrected
+  method. The two differ by exactly the deviations documented in
+  docs/ERRATA.md and docs/REVIEW.md, which is what makes the pair informative.
+
+domains: [soccer, covid]
+approaches: [react-thesis, react_enriched-thesis, personareact-thesis]
+models: [o3-mini, o4-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, gpt-5-mini, gpt-5-nano]
+difficulties: [easy, hard]
+judge: geval-gpt4o-2024-11-20

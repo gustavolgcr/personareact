@@ -81,21 +81,32 @@ The Tailor is handed a finished answer to rewrite. That is a weaker claim than
 the thesis makes: the neutral answer's wording, framing and choice of which
 facts to include all anchor the personalized one.
 
-It is also measurable. Both modes are now selectable
-(`tailor_sees: context | observations`), and on the same question they diverge:
+**Fixed.** `tailor_sees: observations` is now the default for `personareact`,
+so the implementation matches the formalisation. `personareact-thesis` keeps
+`context` for reproduction.
 
-| mode | answer |
+The first attempt at this exposed a second problem: with only observations, the
+Tailor produced *"cerca de 1,36 (naquela unidade de medida do time)"* -- the
+number survived but the unit did not, because the nested agent returned a bare
+`{"Velocidade_Media": 1.3622634444889454}` and the unit had only ever existed
+in the standard answer. The real fix was upstream: the SQL tools now annotate
+result columns from a unit map declared in the domain config, so an observation
+reads `{"Velocidade_Media (m/s)": 1.36}` and the Tailor answers *"cerca de 1,36
+metros por segundo"*. The unit travels with the datum.
+
+The two modes still diverge, which is what makes the ablation worth running:
+
+| mode | answer, on the same question |
 |---|---|
 | `context` (thesis) | "…mantendo uma velocidade média daquelas que mostram raça e entrega — não chega a ser um foguete…" — **no number at all** |
-| `observations` (§4.2) | "…a média registrada foi de cerca de 1,36 (naquela unidade de medida do time)…" — **the datum survives, the unit does not** |
+| `observations`, before the unit fix | "…a média registrada foi de cerca de 1,36 (naquela unidade de medida do time)…" — datum kept, unit lost |
+| `observations` (current default) | "…Foi cerca de 1,36 metros por segundo, o que pra um jogo daquela intensidade mostra como ele se dedicou…" — **datum and unit both preserved, in the profile's voice** |
 
-Neither is obviously better, and that is exactly why it deserves to be an
-experiment rather than an accident. The `context` mode drops the figure
-entirely; the `observations` mode keeps it but cannot name the unit, because
-the unit lived in the standard answer rather than in the observation.
-
-`context` remains the default so the comparison with the thesis holds.
-`configs/approach/personareact-obs.yaml` runs the formalisation.
+The `context` mode, anchored by a finished answer, drops the figure entirely.
+The `observations` mode composes from the retrieved facts and keeps it. Which
+is better depends on the profile and on how much you value information
+preservation -- which is exactly why it deserves to be an experiment rather
+than an accident.
 
 ### 2.2 The Reason–Act loop almost never iterates
 
@@ -113,7 +124,30 @@ reasoning step on each side of it.** In ~89% of the sample, the interleaving of
 reasoning and acting that ReAct is *about* does not happen in the measured
 loop.
 
-There are two causes, and they compound:
+**Fixed.** The default `toolset` is now `primitives`: `listar_tabelas`,
+`descrever_tabelas` and `executar_sql` are exposed directly to the outer loop.
+Measured on the same question, the loop went from 2 iterations to 4-5, with a
+real trace:
+
+```
+Thought: preciso listar as tabelas disponíveis
+Action: listar_tabelas      -> Tabelas: Estatisticas_Segmento, Jogadores, ...
+Thought: vou descrever a view View_ResumoPorJogadorEPartida
+Action: descrever_tabelas   -> CREATE VIEW View_ResumoPorJogadorEPartida AS ...
+Thought: agora posso consultar
+Action: executar_sql        -> [{"Velocidade_Media (m/s)": 1.3622634444889454}]
+Thought: já tenho o dado
+```
+
+Two further consequences, both good: there is **no second language model** at
+all, which removes the `SV-08` confound rather than making it configurable; and
+a SQL error becomes an observation the agent corrects on the next iteration,
+which is the behaviour ReAct exists to produce.
+
+`max_iterations` rises from 5 to 8, because primitives need more steps for the
+same work. The `-thesis` variants keep 5 and the nested agent.
+
+The original causes, for the record:
 
 - the tool is itself a complete ReAct agent (`create_react_agent` over
   `SQLDatabaseToolkit`), so it lists tables, reads schemas, writes SQL, reads
@@ -310,8 +344,12 @@ saying out loud in the paper:
 
 ## 5. What was changed in the rewrite, and what was left alone
 
-**Fixed:** the discarded `action_input`; the nested agent built once instead of
-per call; `include_raw` plus retries; truthiness instead of key presence;
+**Fixed:** the nested agent replaced by primitives, so the Reason-Act cycle
+actually interleaves and no hidden second model is involved; the Tailor input
+narrowed to O* with units carried in the observation; the discarded
+`action_input` (including the subtler case where an empty argument was replaced
+by the question -- legitimate for `listar_tabelas`); the nested agent built once
+instead of per call; `include_raw` plus retries; truthiness instead of key presence;
 `invoke()` instead of `__call__`; no callables in state; no module-level side
 effects; no network call to draw a diagram; explicit sampling parameters for
 every approach from one config; the Tailor input made explicit and selectable.

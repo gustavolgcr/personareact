@@ -1,0 +1,13 @@
+name: react_enriched-thesis
+display_name: ReAct + enriched prompt (as implemented in the thesis)
+description: >-
+  Reproduces the 2025 runs: the single tool is itself a ReAct agent over the
+  SQL toolkit, so the outer loop delegates everything and typically runs two
+  iterations. Kept so the published numbers stay reproducible; see
+  docs/REVIEW.md section 2.2 for why it is not the default.
+use_reasoning: true
+use_tools: true
+use_tailor: false
+toolset: agent
+max_iterations: 5
+question_suffix: " Mude a resposta com base no perfil do usuário que fez a pergunta: {profile}."

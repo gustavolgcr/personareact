@@ -88,6 +88,15 @@ experiment. `personareact runs` lists the runs on disk.
 `standard`, `cot` and `act` correspond to the paradigms the thesis illustrates
 in Figure 2 but never measured; they are included here as ablations.
 
+Three further approaches — `react-thesis`, `react_enriched-thesis` and
+`personareact-thesis` — reproduce the 2025 runs exactly. They differ from the
+ones above in two ways, both documented in
+[`docs/REVIEW.md`](docs/REVIEW.md): their single tool is itself a ReAct agent
+(so the outer loop runs twice instead of interleaving), and their Tailor step
+receives the whole scratchpad including the standard answer rather than the
+observations that section 4.2 formalises. Use `e1` for the corrected method and
+`e1-thesis` to reproduce what was published.
+
 All six answer **the profile's phrasing** of each question. The profile-blind
 approaches simply never see the profile string. This is a deliberate change
 from the original implementation — see `SV-03` in the errata.
@@ -98,6 +107,7 @@ from the original implementation — see `SV-03` in the errata.
 |---|---|
 | `smoke` | 1 question × 6 approaches × 1 model. A few cents. Run this first. |
 | `e1` | Effectiveness of personalization: 3 approaches × 7 models × 2 domains × 6 profiles × 2 difficulties = 504 cells. |
+| `e1-thesis` | The same 504 cells, run the way the thesis ran them. The pair `e1` / `e1-thesis` isolates the two fidelity fixes. |
 | `e1-ablations` | `e1` plus the three unmeasured paradigms, on 2 models. |
 | `e2` | Variation between profiles: neutral vs. six personalized answers per question, compared with textual and semantic similarity. |
 
@@ -108,7 +118,7 @@ configs/         domain · approach · model · judge · experiment  (the knobs)
 data/            databases + questions.jsonl        (gitignored except corpus)
 src/personareact/
   agent/         the LangGraph state machine: Reason, Act, Tailor
-  tools/         Text-to-SQL over SQLite, with query auditing
+  tools/         primitive SQL tools (default) and the nested Text-to-SQL agent
   prompts/pt_BR/ prompts as files, scoped by domain, hashed into manifests
   corpus/        Question / Answer / Score records and jsonl io
   datasets/      database builders

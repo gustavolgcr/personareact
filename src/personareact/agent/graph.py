@@ -17,6 +17,7 @@ from langgraph.graph import END, StateGraph
 from ..config import ApproachConfig, DomainConfig, ModelConfig
 from ..corpus.schema import Question
 from ..llm import LLMClient, LLMError, Usage, build_client
+from ..tools.sql_primitives import SQLPrimitives
 from ..tools.text_to_sql import TextToSQLTool, is_tool_error
 from .nodes import (
     AgentRuntime,
@@ -102,12 +103,22 @@ class Agent:
         self.domain = domain
         self.model = model
         self.llm: LLMClient = build_client(model, api_key=api_key)
-        tool = (
-            TextToSQLTool(domain=domain, model=model, api_key=api_key, verbose=verbose)
-            if approach.use_tools
-            else None
+
+        tool = primitives = None
+        if approach.use_tools:
+            if approach.toolset == "primitives":
+                primitives = SQLPrimitives(domain=domain)
+            elif approach.toolset == "agent":
+                tool = TextToSQLTool(domain=domain, model=model, api_key=api_key, verbose=verbose)
+            else:
+                raise ValueError(
+                    f"unknown toolset {approach.toolset!r} for approach "
+                    f"{approach.name!r}; expected 'primitives' or 'agent'"
+                )
+
+        self.runtime = AgentRuntime(
+            approach=approach, domain=domain, llm=self.llm, tool=tool, primitives=primitives
         )
-        self.runtime = AgentRuntime(approach=approach, domain=domain, llm=self.llm, tool=tool)
         self.graph = build_graph(self.runtime)
 
     @property
@@ -123,6 +134,10 @@ class Agent:
         total.add(self.llm.usage)
         if self.runtime.tool is not None:
             total.add(self.runtime.tool.usage)
+        # The primitives spend nothing: they are plain SQLite calls with no
+        # language model behind them, which is also why `toolset: primitives`
+        # removes the SV-08 confound entirely rather than making it
+        # configurable.
         return total
 
     def question_text(self, question: Question, profile: str | None) -> str:
@@ -147,8 +162,7 @@ class Agent:
         the original ran plain ReAct against the neutral questions instead and
         then told the judge it had answered the adapted one.
         """
-        if self.runtime.tool is not None:
-            self.runtime.tool.calls = []
+        self.runtime.reset_calls()
 
         state = AgentState(
             question=self.question_text(question, profile),
@@ -205,7 +219,7 @@ class Agent:
             scratchpad=[],
             iterations=0,
             truncated=False,
-            sql_calls=list(self.runtime.tool.calls) if self.runtime.tool else [],
+            sql_calls=self.runtime.tool_calls(),
             ok=False,
             error=message,
             elapsed_s=round(time.perf_counter() - started, 3),

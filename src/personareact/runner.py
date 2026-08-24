@@ -49,10 +49,18 @@ class CostLimitExceeded(RuntimeError):
 PER_QUESTION_TOKENS: dict[str, tuple[int, int]] = {
     "standard": (250, 50),
     "cot": (300, 220),
+    # `act` keeps the nested agent, which lists tables and reads schemas inside
+    # one call -- which is why it is the most expensive of the six.
     "act": (24000, 400),
-    "react": (7400, 360),
-    "react_enriched": (5700, 350),
-    "personareact": (5500, 390),
+    # The primitive toolset: more outer iterations, but no second model, so the
+    # totals land close to the nested agent's while the reasoning is visible.
+    "react": (6900, 420),
+    "react_enriched": (6900, 420),
+    "personareact": (6900, 450),
+    # The `-thesis` variants delegate to the nested agent.
+    "react-thesis": (7400, 360),
+    "react_enriched-thesis": (5700, 350),
+    "personareact-thesis": (5500, 390),
     "_default": (7000, 400),
 }
 

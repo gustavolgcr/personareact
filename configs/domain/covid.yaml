@@ -11,6 +11,14 @@ expects_views: []
 
 prompt_dir: covid
 
+# The laboratory results carry their own unit per row, in CD_UNIDADE, so only
+# the date and identifier columns get a static annotation here.
+units:
+  AA_NASCIMENTO: ano
+  DT_COLETA: data (YYYY-MM-DD)
+  DT_ATENDIMENTO: data (YYYY-MM-DD)
+  DT_DESFECHO: data (YYYY-MM-DD)
+
 profiles:
   - Enfermeiro
   - Familiar de um Paciente

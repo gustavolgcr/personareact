@@ -67,6 +67,11 @@ class DomainConfig:
     expects_views: list[str]
     profiles: list[str]
     prompt_dir: str
+    #: Column name -> unit, appended to result columns by the SQL tools so the
+    #: unit travels *with* the observation. A legacy answer reports "1.362
+    #: km/h" for a column stored in metres per second; carrying the unit in the
+    #: observation is what stops that (ERRATA SV-10).
+    units: dict[str, str] = field(default_factory=dict)
     description: str = ""
 
     @property
@@ -84,6 +89,7 @@ class DomainConfig:
             expects_views=list(raw.get("expects_views") or []),
             profiles=list(raw["profiles"]),
             prompt_dir=raw.get("prompt_dir", name),
+            units=dict(raw.get("units") or {}),
             description=raw.get("description", ""),
         )
 
@@ -123,6 +129,14 @@ class ApproachConfig:
     #: what the thesis implementation did) or "observations" (only O*, which is
     #: what section 4.2 formalises). See AgentState.tailor_input.
     tailor_sees: str = "context"
+    #: Which tools the outer loop is given.
+    #:   "primitives"  listar_tabelas / descrever_tabelas / executar_sql, so the
+    #:                 Reason-Act cycle actually interleaves (and no second
+    #:                 language model is involved at all);
+    #:   "agent"       one tool that is itself a ReAct agent over the SQL
+    #:                 toolkit -- the thesis implementation, in which the outer
+    #:                 loop ran exactly twice in 42 of 47 traces.
+    toolset: str = "primitives"
     description: str = ""
 
     @property
@@ -141,6 +155,7 @@ class ApproachConfig:
             max_iterations=int(raw.get("max_iterations", 5)),
             question_suffix=raw.get("question_suffix"),
             tailor_sees=raw.get("tailor_sees", "context"),
+            toolset=raw.get("toolset", "primitives"),
             description=raw.get("description", ""),
         )
 
