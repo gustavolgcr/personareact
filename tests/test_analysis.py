@@ -123,6 +123,23 @@ class TestSignificance:
         assert (results.p_holm >= results.p_value - 1e-12).all()
 
 
+@pytest.fixture
+def no_embeddings(monkeypatch):
+    """Make `sentence_transformers` unimportable for the duration of a test.
+
+    Mirrors a machine that installed the project without the `embeddings`
+    extra -- which is every CI runner, and most readers.
+    """
+    import sys
+
+    monkeypatch.setitem(sys.modules, "sentence_transformers", None)
+    from personareact.eval import similarity
+
+    similarity._sentence_model.cache_clear()
+    yield
+    similarity._sentence_model.cache_clear()
+
+
 class TestExperiment2Figures:
     """The figure types the thesis has and the first port did not."""
 
@@ -162,11 +179,24 @@ class TestExperiment2Figures:
         written = plot_metric_boxplots(self.pairs(), tmp_path)
         assert [p.name for p in written] == ["e2_soccer_distribution_boxplots.png"]
 
-    def test_the_projection_needs_enough_points(self, tmp_path):
-        """Fewer than six answers cannot be projected; it must not raise."""
+    def test_the_projection_needs_enough_points(self, tmp_path, no_embeddings):
+        """Too few answers must short-circuit *before* the model is loaded.
+
+        This is environment-independent on purpose. The first version passed
+        locally only because sentence-transformers happened to be installed:
+        the model loaded, and the length check returned an empty list
+        afterwards. On a clean runner the same call raised ImportError, which
+        is how CI caught it on its first run. Blocking the import here makes
+        the test assert the contract rather than the machine it runs on.
+        """
         from personareact.analysis.experiment2 import plot_projection
 
         assert plot_projection(self.pairs().head(3), [], tmp_path) == []
+
+    def test_an_empty_frame_short_circuits_too(self, tmp_path, no_embeddings):
+        from personareact.analysis.experiment2 import plot_projection
+
+        assert plot_projection(self.pairs().head(0), [], tmp_path) == []
 
     def test_semantic_columns_are_absent_unless_requested(self):
         """The embeddings extra pulls PyTorch, so it stays opt-in."""

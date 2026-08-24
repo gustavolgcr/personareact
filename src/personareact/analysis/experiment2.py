@@ -33,6 +33,10 @@ from ..paths import DATA_DIR, FIGURES_DIR, TABLES_DIR, ensure_dir
 
 METRICS = ["rouge_l", "bleu", "edit_similarity", "edit_distance"]
 
+#: t-SNE needs more points than dimensions to say anything; below this a
+#: projection is noise wearing a chart.
+MIN_PROJECTION_POINTS = 6
+
 
 def build_pairs(
     answers: list[Answer],
@@ -315,66 +319,75 @@ def plot_projection(
     except ImportError:
         return []
 
+    # Decide there is something to project *before* loading a 400 MB sentence
+    # model. Checking afterwards was both wasteful and a latent bug: it turned
+    # "nothing to plot" into an ImportError whenever the optional `embeddings`
+    # extra was absent, which is exactly how CI caught it.
+    groups: list[tuple[str, str, pd.DataFrame]] = []
+    for domain in sorted(frame["domain"].unique()):
+        for model_name in sorted(frame[frame["domain"] == domain]["model"].unique()):
+            subset = frame[(frame["domain"] == domain) & (frame["model"] == model_name)]
+            if len(subset) >= MIN_PROJECTION_POINTS:
+                groups.append((domain, model_name, subset))
+    if not groups:
+        return []
+
     from ..eval.similarity import _sentence_model
 
     model = _sentence_model("all-mpnet-base-v2")
     by_id = {(a.question_id, a.approach, a.model): a for a in answers if a.ok}
 
     written: list[Path] = []
-    for domain in sorted(frame["domain"].unique()):
-        for model_name in sorted(frame[frame["domain"] == domain]["model"].unique()):
-            subset = frame[(frame["domain"] == domain) & (frame["model"] == model_name)]
-            texts, profiles = [], []
-            for _, row in subset.iterrows():
-                answer = by_id.get((row["question_id"], row["approach"], row["model"]))
-                if answer is not None:
-                    texts.append(answer.answer)
-                    profiles.append(row["profile"])
-            if len(texts) < 6:
-                continue
+    for domain, model_name, subset in groups:
+        texts, profiles = [], []
+        for _, row in subset.iterrows():
+            answer = by_id.get((row["question_id"], row["approach"], row["model"]))
+            if answer is not None:
+                texts.append(answer.answer)
+                profiles.append(row["profile"])
+        if len(texts) < MIN_PROJECTION_POINTS:
+            continue
 
-            vectors = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-            perplexity = min(10, max(2, (len(texts) - 1) // 3))
-            projected = TSNE(
-                n_components=2, perplexity=perplexity, random_state=seed, init="pca"
-            ).fit_transform(vectors)
+        vectors = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+        perplexity = min(10, max(2, (len(texts) - 1) // 3))
+        projected = TSNE(
+            n_components=2, perplexity=perplexity, random_state=seed, init="pca"
+        ).fit_transform(vectors)
 
-            similarity = vectors @ vectors.T
-            np.fill_diagonal(similarity, -np.inf)
-            closest = np.unravel_index(np.argmax(similarity), similarity.shape)
-            np.fill_diagonal(similarity, np.inf)
-            farthest = np.unravel_index(np.argmin(similarity), similarity.shape)
+        similarity = vectors @ vectors.T
+        np.fill_diagonal(similarity, -np.inf)
+        closest = np.unravel_index(np.argmax(similarity), similarity.shape)
+        np.fill_diagonal(similarity, np.inf)
+        farthest = np.unravel_index(np.argmin(similarity), similarity.shape)
 
-            figure, axis = plt.subplots(figsize=(9, 7))
-            for profile in sorted(set(profiles)):
-                mask = [p == profile for p in profiles]
-                axis.scatter(
-                    projected[mask, 0], projected[mask, 1], label=profile, s=42, alpha=0.75
-                )
-            for pair, colour, style, label in (
-                (closest, "tab:blue", "-", "closest pair"),
-                (farthest, "tab:red", "--", "farthest pair"),
-            ):
-                axis.plot(
-                    projected[list(pair), 0],
-                    projected[list(pair), 1],
-                    colour,
-                    linestyle=style,
-                    linewidth=2,
-                    label=label,
-                )
-            axis.set_title(
-                f"Personalized answers in embedding space — {domain} / {model_name}\n"
-                "t-SNE projection; pairs measured on the embeddings, not the projection"
+        figure, axis = plt.subplots(figsize=(9, 7))
+        for profile in sorted(set(profiles)):
+            mask = [p == profile for p in profiles]
+            axis.scatter(projected[mask, 0], projected[mask, 1], label=profile, s=42, alpha=0.75)
+        for pair, colour, style, label in (
+            (closest, "tab:blue", "-", "closest pair"),
+            (farthest, "tab:red", "--", "farthest pair"),
+        ):
+            axis.plot(
+                projected[list(pair), 0],
+                projected[list(pair), 1],
+                colour,
+                linestyle=style,
+                linewidth=2,
+                label=label,
             )
-            axis.legend(frameon=False, fontsize=8, loc="best")
-            axis.set_xticks([])
-            axis.set_yticks([])
-            figure.tight_layout()
-            path = ensure_dir(output_dir) / f"e2_{domain}_{model_name}_projection.png"
-            figure.savefig(path, dpi=200)
-            plt.close(figure)
-            written.append(path)
+        axis.set_title(
+            f"Personalized answers in embedding space — {domain} / {model_name}\n"
+            "t-SNE projection; pairs measured on the embeddings, not the projection"
+        )
+        axis.legend(frameon=False, fontsize=8, loc="best")
+        axis.set_xticks([])
+        axis.set_yticks([])
+        figure.tight_layout()
+        path = ensure_dir(output_dir) / f"e2_{domain}_{model_name}_projection.png"
+        figure.savefig(path, dpi=200)
+        plt.close(figure)
+        written.append(path)
     return written
 
 
