@@ -1,0 +1,17 @@
+name: gpt-5.6-luna-none
+model: gpt-5.6-luna
+sql_model: null
+reasoning: true
+reasoning_effort: none
+supports_sampling_params: false
+temperature: null
+top_p: null
+frequency_penalty: null
+seed: 20250820
+usd_per_1m_input: 0.20
+usd_per_1m_output: 1.20
+
+# OpenAI publishes no dated snapshot for the 5.6 family: this id IS the
+# snapshot. Declared so the reproducibility regression is visible rather
+# than silent. See docs/ERRATA.md, SV-13.
+no_dated_snapshot: true

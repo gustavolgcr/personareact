@@ -1,0 +1,26 @@
+name: h4-effort
+description: >-
+  H4, tested as a controlled variable for the first time.
+
+  The thesis split seven models into "com raciocínio" and "sem raciocínio",
+  which confounded reasoning with model family, size and training generation.
+  In the GPT-5.6 generation reasoning is a parameter, not a model identity, so
+  the same model can be swept across reasoning.effort with everything else held
+  fixed.
+
+  A single-question probe already shows the effect is not subtle. On
+  gpt-5.6-luna, same prompt and same database:
+
+    effort=none   1 iteration,  0 tool calls, declines to answer
+    effort=medium 4 iterations, 3 tool calls, grounded answer
+    effort=high   4 iterations, 3 tool calls, grounded answer
+
+  With effort=none the agent does not act at all -- so the Reason-Act cycle
+  itself, not just answer quality, depends on the dial.
+
+domains: [soccer]
+approaches: [react, react_enriched, personareact]
+models: [gpt-5.6-luna-none, gpt-5.6-luna, gpt-5.6-luna-high]
+difficulties: [easy, hard]
+profiles: ["Torcedor do Time", "Técnico do Time", "Fisioterapeuta do Time"]
+judge: geval-gpt4o-2024-11-20

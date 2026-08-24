@@ -116,18 +116,51 @@ class TestDomains:
 
 
 class TestModels:
-    def test_every_model_config_loads_and_is_pinned_to_a_snapshot(self):
+    def test_every_model_names_a_dated_snapshot_or_admits_it_cannot(self):
+        """A model id must be reproducible, or say out loud that it is not.
+
+        OpenAI stopped publishing dated snapshots with the GPT-5.6 family:
+        ``gpt-5.6-luna`` is itself the only snapshot name. That is a real
+        reproducibility regression, so the config has to declare it rather
+        than let a floating id slip through unnoticed.
+        """
         for name in list_configs("model"):
             config = ModelConfig.load(name)
-            assert any(char.isdigit() for char in config.model.split("-")[-1]), (
-                f"{name} must name a dated snapshot, not a floating alias"
+            dated = any(char.isdigit() for char in config.model.split("-")[-1])
+            assert dated or config.no_dated_snapshot, (
+                f"{name} names neither a dated snapshot nor declares no_dated_snapshot"
             )
 
+    def test_the_thesis_models_are_all_dated(self):
+        """Whatever else changes, the published runs stay identifiable."""
+        for name in ("o3-mini", "o4-mini", "gpt-4.1-mini", "gpt-4o-mini", "gpt-5-mini"):
+            config = ModelConfig.load(name)
+            assert not config.no_dated_snapshot
+            assert any(char.isdigit() for char in config.model.split("-")[-1])
+
     def test_reasoning_models_send_no_sampling_parameters(self):
+        """o-series and GPT-5 reject temperature, top_p and friends.
+
+        ``reasoning_effort`` is not a sampling parameter -- it is the only knob
+        those models do accept, and in the GPT-5.6 generation it is the axis H4
+        is actually about.
+        """
         for name in list_configs("model"):
             config = ModelConfig.load(name)
             if config.reasoning:
-                assert config.sampling_kwargs() == {}
+                assert set(config.sampling_kwargs()) <= {"reasoning_effort"}
+
+    def test_the_reasoning_dial_is_a_known_level(self):
+        levels = {"none", "low", "medium", "high", "xhigh", "max"}
+        for name in list_configs("model"):
+            effort = ModelConfig.load(name).reasoning_effort
+            assert effort is None or effort in levels
+
+    def test_only_reasoning_models_set_an_effort(self):
+        for name in list_configs("model"):
+            config = ModelConfig.load(name)
+            if config.reasoning_effort is not None:
+                assert config.reasoning, f"{name} sets an effort but is not a reasoning model"
 
     def test_non_reasoning_models_send_them_explicitly(self):
         config = ModelConfig.load("gpt-4.1-mini")

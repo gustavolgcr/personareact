@@ -1,0 +1,16 @@
+name: e1-2026
+description: >-
+  Experiment 1 on the current model lineup. Replaces a set chosen in 2025 of
+  which five of seven are scheduled for shutdown: o3-mini-2025-01-31,
+  o4-mini-2025-04-16 and gpt-4.1-nano-2025-04-14 on 2026-10-23, and
+  gpt-5-mini-2025-08-07 / gpt-5-nano-2025-08-07 on 2026-12-11.
+
+  Three tiers of the GPT-5.6 family at default reasoning effort, plus the two
+  thesis models that survive (gpt-4.1-mini, gpt-4o-mini) so part of the
+  published comparison stays anchored.
+
+domains: [soccer, covid]
+approaches: [react, react_enriched, personareact]
+models: [gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, gpt-4.1-mini, gpt-4o-mini]
+difficulties: [easy, hard]
+judge: geval-gpt4o-2024-11-20

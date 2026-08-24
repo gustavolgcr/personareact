@@ -185,6 +185,16 @@ class ModelConfig:
     frequency_penalty: float | None = 0.0
     seed: int | None = 20250820
     reasoning: bool = False
+    #: For the GPT-5.6 generation, where reasoning is a dial rather than a
+    #: model identity: none | low | medium | high | xhigh | max.
+    reasoning_effort: str | None = None
+    #: Set true only when the vendor publishes no dated snapshot for this
+    #: model. OpenAI stopped shipping them with the GPT-5.6 family --
+    #: ``gpt-5.6-luna`` is itself the only snapshot name -- so the usual
+    #: "pin a date" rule cannot be satisfied and has to be acknowledged
+    #: explicitly rather than skipped silently. Mitigation: the run manifest
+    #: records the date, and judge runs archive every raw verdict.
+    no_dated_snapshot: bool = False
     supports_sampling_params: bool = True
     usd_per_1m_input: float = 0.0
     usd_per_1m_output: float = 0.0
@@ -202,12 +212,14 @@ class ModelConfig:
         ``frequency_penalty = 0.0`` as if they had been configured; they never
         were, and they are API defaults. Here they are explicit.
         """
+        kwargs: dict[str, Any] = {}
+        if self.reasoning_effort:
+            kwargs["reasoning_effort"] = self.reasoning_effort
         if not self.supports_sampling_params:
-            return {}
+            return kwargs
         # Passed as first-class ChatOpenAI fields, not through `model_kwargs`,
         # which langchain-openai warns about and which silently bypasses its
         # own validation.
-        kwargs: dict[str, Any] = {}
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
         if self.top_p is not None:
@@ -230,6 +242,8 @@ class ModelConfig:
             frequency_penalty=raw.get("frequency_penalty", 0.0),
             seed=raw.get("seed", 20250820),
             reasoning=bool(raw.get("reasoning", False)),
+            reasoning_effort=raw.get("reasoning_effort"),
+            no_dated_snapshot=bool(raw.get("no_dated_snapshot", False)),
             supports_sampling_params=bool(raw.get("supports_sampling_params", True)),
             usd_per_1m_input=float(raw.get("usd_per_1m_input", 0.0)),
             usd_per_1m_output=float(raw.get("usd_per_1m_output", 0.0)),
