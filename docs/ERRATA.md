@@ -33,7 +33,7 @@ Severity is about the **published results**, not the code:
 | [SV-08](#sv-08) | High | The SQL model was coupled to the agent model | solved (no second model) |
 | [SV-16](#sv-16) | High | The Tailor received the answer it should compose; units lost | fixed |
 | [SV-09](#sv-09) | Medium | Failed runs were saved as answers and graded | fixed |
-| [SV-10](#sv-10) | Medium | Nothing checked factual fidelity | fixed (new metric) |
+| [SV-10](#sv-10) | **High** | Nothing checked factual fidelity, and answers do contradict each other | fixed (new metric) |
 | [SV-11](#sv-11) | Medium | Everything joined by list position | fixed |
 | [SV-12](#sv-12) | **Critical** | The outlier filter deleted ~19% of the treatments and 0% of the baseline | fixed, quantified |
 | [SV-13](#sv-13) | Medium | Judge model unpinned (a floating alias) | fixed |
@@ -318,7 +318,7 @@ successful because its answer *was* the tool's error string. Fixed by
 
 ## SV-10 — Nothing checked factual fidelity {#sv-10}
 
-**Severity Medium.**
+**Severity High.** *Raised from Medium once the semantic analysis was actually run.*
 
 *Original:* all three G-Eval criteria measure style, interpretation quality and
 stylistic consistency. Nothing compares an answer to the database.
@@ -330,11 +330,42 @@ risk is real: a legacy answer reports "velocidade média … foi de 1.362 km/h"
 for a column stored in metres per second, which Quadro 6 of the thesis renders
 correctly as 1.36 m/s ≈ 4.9 km/h.
 
+*Evidence, from the semantic analysis the thesis specified but never ran.*
+Section 5.5 states the expectation plainly: "espera-se uma alta similaridade
+semântica entre as respostas de diferentes perfis, uma vez que todas respondem,
+em essência, à mesma pergunta". Running it over the thesis' own answers:
+
+| | mean cosine | median | 10th pct | below 0.5 |
+|---|---|---|---|---|
+| soccer | 0.627 | 0.652 | 0.436 | **16.0%** |
+| covid | 0.705 | 0.727 | 0.532 | 7.4% |
+
+That is not high semantic similarity. And the relationship is systematic:
+Spearman rho between edit distance and cosine similarity is **−0.547**
+(p ≈ 4e-257, n = 6,720). **The more the text is rewritten, the less meaning
+survives.** If personalization were purely stylistic there would be no such
+relationship.
+
+The extreme cases are not stylistic at all. The single most divergent pair
+(cosine 0.027, o3-mini, Influenciador Digital) is a flat contradiction:
+
+> neutral (ReAct): *"Emanuel Britez"*
+> personalized: *"o Titi foi o jogador que se destacou nesse clássico…"*
+
+Same question, different player. One of them is wrong, and nothing in the
+thesis' evaluation could detect it — the three G-Eval criteria measure style,
+and the similarity metrics were read as *personalization intensity* rather than
+as a warning. Part of the gap here is also SV-14/SV-15 showing through: the
+ReAct baseline queried a database whose summary view returned inflated
+aggregates, so the two conditions could disagree because they retrieved
+differently.
+
 *Fix:* `eval/factuality.py` — every number stated in an answer must be
 traceable, within a rounding tolerance, to a number the tool retrieved.
 Optional gold values per question (`gold_sql` / `gold_answer`, see
 `docs/GOLD.md`) add a second check. Computed programmatically, so it needs no
-judge and costs nothing.
+judge and costs nothing. The semantic check is now wired in as well:
+`personareact analyze --experiment e2 --semantic`.
 
 ---
 
