@@ -26,13 +26,15 @@ records.
 
 ## Quickstart
 
+[![CI](https://github.com/gustavolgcr/personareact/actions/workflows/ci.yml/badge.svg)](https://github.com/gustavolgcr/personareact/actions/workflows/ci.yml)
+
 ```bash
 git clone https://github.com/gustavolgcr/personareact
 cd personareact
 
-# 1. environment
-uv venv --python 3.12
-uv pip install -e ".[analysis,judge]"
+# 1. environment — uv.lock pins all 163 packages, so this resolves to the
+#    same versions CI uses and the same ones the results were produced with
+uv sync --extra analysis --extra judge
 
 # 2. credentials
 cp .env.example .env       # then put your OpenAI key in it

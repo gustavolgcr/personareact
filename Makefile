@@ -8,13 +8,17 @@ CLI  := $(VENV)/bin/personareact
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-install: ## create the venv and install the package with the analysis extra
-	uv venv --python 3.12
-	uv pip install -e ".[analysis,dev]"
+install: ## locked install: analysis + judge + dev, exactly the versions in uv.lock
+	uv sync --extra analysis --extra judge --extra dev
 
-install-all: ## everything, including the judge and sentence embeddings (~1.5 GB)
-	uv venv --python 3.12
-	uv pip install -e ".[analysis,judge,embeddings,dev]"
+install-all: ## everything, including sentence embeddings (~1.5 GB of PyTorch)
+	uv sync --extra analysis --extra judge --extra embeddings --extra dev
+
+ci: ## run locally exactly what CI runs
+	uv run ruff check src tests scripts
+	uv run ruff format --check src tests scripts
+	uv run pytest -q
+	uv run personareact list
 
 test: ## run the test suite
 	$(PY) -m pytest -q
