@@ -12,6 +12,7 @@ personareact runs                       what is on disk
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -300,6 +301,10 @@ def judge_command(
     run: Annotated[str, typer.Option(help="generation run id")],
     judge: Annotated[str, typer.Option(help="a configs/judge/*.yaml")] = "geval-gpt4o-2024-11-20",
     limit: Annotated[int | None, typer.Option(help="first N answers")] = None,
+    repetitions: Annotated[
+        int | None,
+        typer.Option(help="override the judge config's repetition count (cost control)"),
+    ] = None,
     resume: Annotated[bool, typer.Option(help="skip scores already on disk")] = False,
     include_failed: Annotated[bool, typer.Option(help="also score ok=False answers")] = False,
 ) -> None:
@@ -307,6 +312,14 @@ def judge_command(
     from .eval.judge import JudgeOptions, judge_run
 
     config = JudgeConfig.load(judge)
+    if repetitions is not None:
+        if repetitions < 1:
+            raise typer.BadParameter("--repetitions must be at least 1")
+        config = replace(config, repetitions=repetitions)
+        console.print(
+            f"[yellow]repetitions overridden to {repetitions} "
+            f"(config declares {JudgeConfig.load(judge).repetitions})[/yellow]"
+        )
     manifest = judge_run(
         run,
         config,
