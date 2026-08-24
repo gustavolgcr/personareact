@@ -1,10 +1,18 @@
 name: geval-gpt4o-2024-11-20
+
+# LEGACY. Kept because every score in results/legacy-thesis-2025-judge/ and in
+# the thesis tables was produced by this model, so it is the only way to make a
+# new run comparable with the published ones. For new work use
+# geval-gpt-5.6-sol, which is the better instrument -- see its notes.
 # A dated snapshot, never a floating alias. The original left
 # `# model=OPENAI_MODEL` commented out on every metric, so deepeval fell back
 # to its default `gpt-4o` -- which resolves the contradiction between sections
 # 5.3 (GPT-4o) and 5.5 (4o-mini) of the thesis in favour of 5.3, but leaves the
 # scores unrecoverable once OpenAI repoints the alias.
 model: gpt-4o-2024-11-20
+temperature: 0.0
+usd_per_1m_input: 2.50
+usd_per_1m_output: 10.00
 repetitions: 5
 
 # Strip the condition label before judging so the judge cannot infer which

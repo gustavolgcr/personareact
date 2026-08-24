@@ -179,27 +179,67 @@ class TestModels:
 
 
 class TestJudge:
-    def test_judge_config_loads(self):
-        config = JudgeConfig.load("geval-gpt4o-2024-11-20")
+    def test_the_default_judge_is_the_current_flagship(self):
+        config = JudgeConfig.load("geval-gpt-5.6-sol")
+        assert config.model == "gpt-5.6-sol"
         assert config.repetitions == 5
         assert config.criteria
 
-    def test_a_floating_alias_is_rejected(self, tmp_path, monkeypatch):
-        """The judge model must be a dated snapshot.
+    def test_the_legacy_judge_is_kept_for_comparability(self):
+        """Every published score came from this model; it must stay loadable."""
+        config = JudgeConfig.load("geval-gpt4o-2024-11-20")
+        assert config.model == "gpt-4o-2024-11-20"
 
-        `gpt-4o` is repointed by OpenAI over time; the original relied on it as
-        deepeval's silent default, which makes the published scores
-        unrecoverable.
+    def test_a_reasoning_judge_uses_the_only_temperature_it_accepts(self):
+        """deepeval sends temperature on every call and defaults it to 0.
+
+        Reasoning models reject anything but the default, so the config has to
+        carry 1.0 or the judge fails on its first request.
         """
+        assert JudgeConfig.load("geval-gpt-5.6-sol").temperature == 1.0
+
+    def test_the_legacy_judge_keeps_its_original_temperature(self):
+        assert JudgeConfig.load("geval-gpt4o-2024-11-20").temperature == 0.0
+
+    def test_a_judge_without_a_dated_snapshot_must_say_so(self):
+        assert JudgeConfig.load("geval-gpt-5.6-sol").no_dated_snapshot is True
+        assert JudgeConfig.load("geval-gpt4o-2024-11-20").no_dated_snapshot is False
+
+    def test_every_judge_declares_its_price(self):
+        """deepeval prices only models it shipped with; the rest must declare."""
+        for name in list_configs("judge"):
+            config = JudgeConfig.load(name)
+            assert config.usd_per_1m_input > 0
+            assert config.usd_per_1m_output > 0
+
+    @pytest.mark.parametrize("alias", ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"])
+    def test_a_repointed_alias_is_rejected(self, tmp_path, monkeypatch, alias):
+        """These are aliases OpenAI moves; naming one loses the scores."""
         import personareact.config as config_module
 
         directory = tmp_path / "judge"
         directory.mkdir(parents=True)
-        (directory / "loose.yaml").write_text("model: gpt-4o\n", encoding="utf-8")
+        (directory / "loose.yaml").write_text(f"model: {alias}\n", encoding="utf-8")
         monkeypatch.setattr(config_module, "CONFIG_DIR", tmp_path)
 
-        with pytest.raises(ConfigError, match="floating alias"):
+        with pytest.raises(ConfigError, match="repoints"):
             JudgeConfig.load("loose")
+
+    def test_an_undated_model_must_declare_it_has_no_snapshot(self, tmp_path, monkeypatch):
+        import personareact.config as config_module
+
+        directory = tmp_path / "judge"
+        directory.mkdir(parents=True)
+        (directory / "undated.yaml").write_text("model: some-new-model\n", encoding="utf-8")
+        monkeypatch.setattr(config_module, "CONFIG_DIR", tmp_path)
+
+        with pytest.raises(ConfigError, match="no_dated_snapshot"):
+            JudgeConfig.load("undated")
+
+        (directory / "undated.yaml").write_text(
+            "model: some-new-model\nno_dated_snapshot: true\n", encoding="utf-8"
+        )
+        assert JudgeConfig.load("undated").model == "some-new-model"
 
 
 class TestExperiments:

@@ -259,10 +259,9 @@ class ModelConfig:
 class JudgeConfig:
     """LLM-as-a-judge settings.
 
-    ``model`` must be a dated snapshot. The original code left
-    ``# model=OPENAI_MODEL`` commented out on every metric, so deepeval fell
-    back to its default (``gpt-4o``) -- an alias that OpenAI repoints over
-    time, which makes the reported scores unrecoverable later.
+    The original left ``# model=OPENAI_MODEL`` commented out on every metric,
+    so deepeval fell back to its default ``gpt-4o`` -- an alias OpenAI repoints
+    over time, which makes the published scores unrecoverable.
     """
 
     name: str
@@ -270,22 +269,60 @@ class JudgeConfig:
     repetitions: int = 5
     blind: bool = True
     criteria: list[str] = field(default_factory=list)
+    #: deepeval sends this on every completion call and defaults it to 0.
+    #: Reasoning models reject a non-default temperature, so a modern judge
+    #: needs 1.0 here.
+    temperature: float = 0.0
+    #: True only when the vendor publishes no dated snapshot. OpenAI stopped
+    #: shipping them with the GPT-5.6 family, so the "pin a date" rule cannot
+    #: be met and has to be declared rather than quietly bypassed.
+    no_dated_snapshot: bool = False
+    #: Used to price the judge in deepeval, which does not know this model.
+    usd_per_1m_input: float = 0.0
+    usd_per_1m_output: float = 0.0
+    notes: str = ""
+
+    #: Aliases OpenAI actively repoints. Naming one of these is always a bug,
+    #: whatever the config claims.
+    FLOATING_ALIASES = (
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+    )
 
     @classmethod
     def load(cls, name: str) -> JudgeConfig:
         raw = _load_yaml(CONFIG_DIR / "judge" / f"{name}.yaml")
         model = raw["model"]
-        if model in {"gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"}:
+        no_dated_snapshot = bool(raw.get("no_dated_snapshot", False))
+
+        if model in cls.FLOATING_ALIASES:
             raise ConfigError(
-                f"judge model {model!r} is a floating alias. Pin a dated snapshot "
-                f"(e.g. gpt-4o-2024-11-20) so the scores stay recoverable."
+                f"judge model {model!r} is an alias OpenAI repoints over time. "
+                f"Pin a dated snapshot (e.g. gpt-4o-2024-11-20) so the scores "
+                f"stay recoverable."
             )
+        dated = any(char.isdigit() for char in model.split("-")[-1])
+        if not dated and not no_dated_snapshot:
+            raise ConfigError(
+                f"judge model {model!r} names no dated snapshot. Either pin one, "
+                f"or set no_dated_snapshot: true to record that the vendor "
+                f"publishes none for this model."
+            )
+
         return cls(
             name=raw.get("name", name),
             model=model,
             repetitions=int(raw.get("repetitions", 5)),
             blind=bool(raw.get("blind", True)),
             criteria=list(raw.get("criteria") or []),
+            temperature=float(raw.get("temperature", 0.0)),
+            no_dated_snapshot=no_dated_snapshot,
+            usd_per_1m_input=float(raw.get("usd_per_1m_input", 0.0)),
+            usd_per_1m_output=float(raw.get("usd_per_1m_output", 0.0)),
+            notes=raw.get("notes", ""),
         )
 
 

@@ -13,4 +13,4 @@ domains: [soccer, covid]
 approaches: [react, react_enriched, personareact]
 models: [gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, gpt-4.1-mini, gpt-4o-mini]
 difficulties: [easy, hard]
-judge: geval-gpt4o-2024-11-20
+judge: geval-gpt-5.6-sol

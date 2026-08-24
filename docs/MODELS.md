@@ -93,13 +93,54 @@ and a test enforces that the admission is explicit. Mitigation: every run
 manifest records the date, and judge runs archive each raw verdict, so a later
 drift is at least detectable.
 
-**The judge is now the oldest thing in the pipeline.** It is pinned to
-`gpt-4o-2024-11-20`, which is sound for comparability with the legacy scores
-but is a 2024 model grading 2026 answers — and the comparison in
-`docs/COMPARISON.md` shows it giving 8.76 on "Interpretação e Explicação dos
-Dados" to a condition that invented three numbers in ten. If you re-judge
-everything anyway, `gpt-5.6-terra` is the better instrument; if you want to
-compare against the legacy scores, it has to stay.
+**The judge was the oldest thing in the pipeline — now switched.** It had been
+pinned to `gpt-4o-2024-11-20`: a 2024 model grading 2026 answers, and one that
+`docs/COMPARISON.md` shows giving 8.76 on "Interpretação e Explicação dos
+Dados" to a condition that invented or converted three numbers in ten. A judge
+that scores fluent interpretation as correct interpretation is the wrong
+instrument for this thesis.
+
+The default is now `geval-gpt-5.6-sol`. `geval-gpt4o-2024-11-20` stays, because
+every published score came from it and it is the only way to make a new run
+comparable with the tables in chapter 6. `compare` and `e1-thesis` deliberately
+still use it; everything else moved.
+
+**Scores from the two judges are not comparable.** Re-judge a whole run with
+one or the other; never mix them in one table.
+
+### What switching the judge actually required
+
+Not a one-line config change. deepeval 2.9.7 predates every model released
+since and carries three hardcoded registries, each failing differently:
+
+| registry | failure when a model is missing |
+|---|---|
+| `valid_gpt_models` | `ValueError: Invalid model`, immediately |
+| `structured_outputs_models` | **silent** — G-Eval drops off the structured-output path and rubric scoring degrades to free-text parsing |
+| `model_pricing` | `KeyError: 'input'`, *after* the call has been paid for |
+
+The middle one is the dangerous one, and it is why
+`eval/criteria.py::_register_with_deepeval` registers all three rather than
+just the price.
+
+There is a second trap. deepeval passes `temperature` on **every** completion
+call and defaults it to `0`, which reasoning models reject. So the judge is now
+built as a configured `GPTModel` instance rather than handed to G-Eval as a
+model name, and `temperature` is a field on the judge config: `1.0` for
+gpt-5.6-sol, `0.0` for the legacy gpt-4o.
+
+One limitation left standing: deepeval 2.9.7 has no way to pass
+`reasoning.effort`, so the judge runs at the model's default. Raising it would
+need a `DeepEvalBaseLLM` subclass.
+
+**Untested against the live API.** The switch was made without running
+anything, so the temperature interaction is verified only against deepeval's
+call signature, not against OpenAI's response. Check it for a few cents before
+committing to a full sweep:
+
+```bash
+personareact judge --run <a small run> --limit 2 --repetitions 1
+```
 
 ## Beyond OpenAI
 

@@ -104,6 +104,8 @@ def judge_run(
     manifest.config = {
         "judge": config.name,
         "judge_model": config.model,
+        "judge_temperature": config.temperature,
+        "judge_no_dated_snapshot": config.no_dated_snapshot,
         "repetitions": config.repetitions,
         "criteria": config.criteria,
         "source_run": run_id,
@@ -123,7 +125,7 @@ def judge_run(
         for note in manifest.notes:
             options.on_progress(note)
 
-    metrics = build_geval_metrics(config.criteria, model=config.model)
+    metrics = build_geval_metrics(config.criteria, judge=config)
     criterion_keys = {get_criterion(k).display_name: k for k in config.criteria}
 
     done = _existing(scores_path) if options.resume else set()

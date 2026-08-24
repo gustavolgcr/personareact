@@ -21,4 +21,6 @@ models: [o3-mini, gpt-4.1-mini]
 difficulties: [easy]
 profiles: ["Torcedor do Time", "Técnico do Time"]
 limit_questions: 5
+# Kept on the legacy judge on purpose: this experiment exists to be
+# compared with the published scores.
 judge: geval-gpt4o-2024-11-20

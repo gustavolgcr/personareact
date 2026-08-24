@@ -299,7 +299,7 @@ def run_command(
 @app.command("judge")
 def judge_command(
     run: Annotated[str, typer.Option(help="generation run id")],
-    judge: Annotated[str, typer.Option(help="a configs/judge/*.yaml")] = "geval-gpt4o-2024-11-20",
+    judge: Annotated[str, typer.Option(help="a configs/judge/*.yaml")] = "geval-gpt-5.6-sol",
     limit: Annotated[int | None, typer.Option(help="first N answers")] = None,
     repetitions: Annotated[
         int | None,

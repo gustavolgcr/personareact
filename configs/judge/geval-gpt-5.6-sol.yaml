@@ -1,0 +1,37 @@
+name: geval-gpt-5.6-sol
+model: gpt-5.6-sol
+
+# gpt-5.6-sol is the current flagship. It is the strongest instrument available
+# for the one criterion where the old judge demonstrably failed: in
+# docs/COMPARISON.md, gpt-4o-2024-11-20 gave 8.76 on "Interpretação e
+# Explicação dos Dados" to a condition that invented or converted three of
+# every ten numbers it stated. A judge that scores fluent interpretation as
+# correct interpretation is the wrong instrument for this thesis.
+
+# OpenAI publishes no dated snapshot for the 5.6 family: this id IS the
+# snapshot. Declared so the reproducibility regression stays visible.
+no_dated_snapshot: true
+
+# deepeval sends `temperature` on every completion call and defaults it to 0,
+# which reasoning models reject. 1.0 is the only value they accept.
+temperature: 1.0
+
+# deepeval 2.9.7 predates this model and prices only what it knows, so the
+# rate is declared here and registered at judge-build time. Promotional
+# pricing through 2026-11-21; list is 5.00 / 30.00.
+usd_per_1m_input: 4.00
+usd_per_1m_output: 20.00
+
+repetitions: 5
+blind: true
+
+criteria:
+  - language_and_style
+  - data_interpretation
+  - style_consistency
+
+notes: >-
+  Not comparable with scores produced by geval-gpt4o-2024-11-20. Re-judge a
+  whole run with one judge or the other; never mix them in a single table.
+  deepeval 2.9.7 cannot pass reasoning.effort, so this runs at the model's
+  default effort.

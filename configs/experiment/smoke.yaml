@@ -10,4 +10,4 @@ models: [gpt-4.1-mini]
 difficulties: [easy]
 profiles: ["Torcedor do Time"]
 limit_questions: 1
-judge: geval-gpt4o-2024-11-20
+judge: geval-gpt-5.6-sol

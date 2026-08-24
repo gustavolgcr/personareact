@@ -119,38 +119,75 @@ def get_criterion(key: str) -> CriterionSpec:
     )
 
 
-def _ensure_pricing(model: str) -> None:
-    """Teach deepeval the price of a dated model snapshot.
+def _register_with_deepeval(
+    model: str, *, usd_per_1m_input: float, usd_per_1m_output: float
+) -> None:
+    """Make a model deepeval has never heard of usable as a judge.
 
-    deepeval 2.9.7 accepts ``gpt-4o-2024-11-20`` as a valid model but prices
-    only the floating alias ``gpt-4o``, so pinning the judge -- which is the
-    whole point of SV-13 -- crashes its cost calculation with ``KeyError:
-    'input'``. Rather than give up the pin, we copy the base alias's price onto
-    the snapshot.
+    deepeval 2.9.7 carries three hardcoded registries, and a model missing from
+    any of them fails in a different way:
 
-    This is a shim around a library limitation, not a correction to a price: a
-    dated snapshot and its alias cost the same at the moment the alias points
-    at it.
+    ``valid_gpt_models``
+        ``GPTModel.__init__`` raises ``ValueError: Invalid model`` outright.
+    ``structured_outputs_models``
+        no error, but G-Eval silently falls back off the structured-output
+        path, so the rubric scoring becomes free-text parsing. This is the
+        dangerous one -- it degrades quietly.
+    ``model_pricing``
+        ``calculate_cost`` raises ``KeyError: 'input'`` after the call has
+        already been paid for.
+
+    The library predates every model released since. Registering is the only
+    way to use a current judge without forking it, and doing it in one place
+    keeps the workaround visible.
     """
     try:
         from deepeval.models.llms import openai_model
     except ImportError:  # pragma: no cover - handled by the caller
         return
 
+    for registry in ("valid_gpt_models", "structured_outputs_models", "json_mode_models"):
+        models = getattr(openai_model, registry, None)
+        if isinstance(models, list) and model not in models:
+            models.append(model)
+
     pricing = getattr(openai_model, "model_pricing", None)
-    if not isinstance(pricing, dict) or model in pricing:
-        return
+    if isinstance(pricing, dict) and model not in pricing:
+        # A dated snapshot costs what its alias costs, so inherit when we can
+        # and fall back to the price declared in the judge config.
+        base = re.sub(r"-\d{4}-\d{2}-\d{2}$", "", model)
+        pricing[model] = pricing.get(
+            base,
+            {
+                "input": usd_per_1m_input / 1_000_000,
+                "output": usd_per_1m_output / 1_000_000,
+            },
+        )
 
-    # "gpt-4o-2024-11-20" -> "gpt-4o";  "o3-mini-2025-01-31" -> "o3-mini"
-    base = re.sub(r"-\d{4}-\d{2}-\d{2}$", "", model)
-    if base in pricing:
-        pricing[model] = pricing[base]
+
+def build_judge_model(config: Any) -> Any:
+    """Build the deepeval model object for a judge config.
+
+    Returns a configured ``GPTModel`` instance rather than a bare model name,
+    because deepeval passes ``temperature`` on every completion call and
+    defaults it to 0. Reasoning models reject a non-default temperature, so a
+    modern judge has to be handed an instance with the right value rather than
+    a string.
+    """
+    from deepeval.models.llms.openai_model import GPTModel
+
+    _register_with_deepeval(
+        config.model,
+        usd_per_1m_input=config.usd_per_1m_input,
+        usd_per_1m_output=config.usd_per_1m_output,
+    )
+    return GPTModel(model=config.model, temperature=config.temperature)
 
 
-def build_geval_metrics(keys: list[str], *, model: str) -> list[Any]:
-    """Instantiate deepeval G-Eval metrics with the judge model pinned.
+def build_geval_metrics(keys: list[str], *, judge: Any) -> list[Any]:
+    """Instantiate deepeval G-Eval metrics for a judge config.
 
-    ``model`` is passed explicitly on every metric. The original left
+    The model is passed explicitly on every metric. The original left
     ``# model=OPENAI_MODEL`` commented out, so deepeval silently used its own
     default (``gpt-4o``) and nothing in the repository recorded which model had
     graded the thesis.
@@ -164,7 +201,7 @@ def build_geval_metrics(keys: list[str], *, model: str) -> list[Any]:
             "judging needs the `judge` extra:\n    uv pip install -e '.[judge]'"
         ) from exc
 
-    _ensure_pricing(model)
+    judge_model = build_judge_model(judge)
 
     metrics = []
     for key in keys:
@@ -182,7 +219,7 @@ def build_geval_metrics(keys: list[str], *, model: str) -> list[Any]:
                     Rubric(score_range=score_range, expected_outcome=outcome)
                     for score_range, outcome in spec.rubric
                 ],
-                model=model,
+                model=judge_model,
                 verbose_mode=False,
             )
         )

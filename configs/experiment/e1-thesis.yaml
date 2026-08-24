@@ -12,4 +12,6 @@ domains: [soccer, covid]
 approaches: [react-thesis, react_enriched-thesis, personareact-thesis]
 models: [o3-mini, o4-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, gpt-5-mini, gpt-5-nano]
 difficulties: [easy, hard]
+# Kept on the legacy judge on purpose: this experiment exists to be
+# compared with the published scores.
 judge: geval-gpt4o-2024-11-20
