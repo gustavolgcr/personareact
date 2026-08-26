@@ -15,6 +15,11 @@ Modelos de Linguagem com base no Paradigma ReAct"* (UFC, 2025), covering two
 case studies: professional football tracking data and COVID-19 hospital
 records.
 
+> **Picking this up cold?** [`HANDOFF.txt`](HANDOFF.txt) is a single-file brief:
+> where everything is, what was found and fixed, what has already been measured,
+> what it costs to run, what is left, and the traps. Written to be pasted into a
+> fresh assistant session as context.
+
 > **Status.** This is a corrected rewrite of the implementation used in the
 > thesis. Several defects in the original affect how the published results
 > should be read. They are all documented, with evidence, in

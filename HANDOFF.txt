@@ -1,0 +1,379 @@
+================================================================================
+PERSONAREACT — HANDOFF PARA OUTRA SESSÃO DO CLAUDE CODE
+================================================================================
+Gerado em 2026-08-24. Repositório em HEAD 6e7a4d3, 24 commits, 178 testes.
+
+Este arquivo existe para uma sessão nova conseguir continuar o trabalho sem
+reler a conversa anterior. Leia tudo antes de agir.
+
+Repositório:  ~/Desktop/personareact
+GitHub:       https://github.com/gustavolgcr/personareact  (PRIVADO)
+Idioma:       código, docs e commits em inglês. Prompts em pt-BR (são o objeto
+              experimental). Converse com o usuário em português.
+Autor git:    Gustavo Coutinho <gustavolgcr@gmail.com>
+
+--------------------------------------------------------------------------------
+0. REGRAS QUE NÃO PODEM SER QUEBRADAS
+--------------------------------------------------------------------------------
+* NUNCA gaste API sem autorização explícita e um teto. `personareact run` e
+  `personareact judge` gastam dinheiro real. Sempre `--dry-run` primeiro e
+  sempre `--cost-limit`. Um sweep completo custa entre US$ 200 e US$ 390.
+* NUNCA misture notas de juízes diferentes na mesma tabela. `geval-gpt-5.6-sol`
+  e `geval-gpt4o-2024-11-20` não são comparáveis. Re-julgue uma run inteira com
+  um ou com o outro.
+* NUNCA torne o repositório público sem o usuário pedir. O docs/ERRATA.md
+  documenta 16 defeitos em tese já defendida, incluindo dois inéditos.
+* NUNCA edite `results/legacy-thesis-2025*/`. É o arquivo fiel da tese e a
+  única base de comparação. Regenerá-lo é impossível depois de out/2026.
+* NUNCA commite `.env`. Já é gitignorado e há um teste que verifica
+  (tests/test_no_secrets.py). O histórico está limpo: 0 commits tocando .env.
+
+--------------------------------------------------------------------------------
+1. CONTEXTO: DE ONDE ISSO VEIO
+--------------------------------------------------------------------------------
+O usuário defendeu a tese de doutorado "PersonaReAct: Personalização de
+Respostas em Modelos de Linguagem com base no Paradigma ReAct" (UFC, 2025). O
+PDF está em ~/Downloads/2025_tese_lgcrego.pdf (167 páginas). A implementação
+original está em ~/doutorado/implementacoes (12 repositórios git separados,
+11 GB, INTOCADA — não modifique nada lá).
+
+A tese propõe o PersonaReAct: ReAct (Yao et al. 2023) mais uma etapa final de
+personalização, o módulo "Tailor", formalizado como tau : P x O* -> M (perfil e
+observações para mensagem final). Dois estudos de caso: futebol (dados de GPS de
+jogadores do Fortaleza EC, 2023, RESTRITO — não pode ser redistribuído) e médico
+(COVID-19 do Hospital Sírio-Libanês via FAPESP, PÚBLICO).
+
+Hipóteses da tese:
+  H1  personalização melhora utilidade/clareza/interpretabilidade
+  H2  perfis diferentes geram respostas distintas para a mesma pergunta
+  H3  a separação explícita da personalização (Tailor) supera o prompt enriquecido
+  H4  o tipo de modelo influencia o desempenho relativo das abordagens
+
+O trabalho feito foi: (1) auditoria da implementação original, (2) consolidação
+num repositório novo, (3) correção dos defeitos, (4) validação empírica.
+
+--------------------------------------------------------------------------------
+2. OS 16 DEFEITOS ENCONTRADOS (detalhe completo em docs/ERRATA.md)
+--------------------------------------------------------------------------------
+Severidade é sobre os RESULTADOS PUBLICADOS, não sobre o código.
+
+SV-01 CRÍTICO  "Distância de Edição" era na verdade uma SIMILARIDADE
+               (textdistance.levenshtein.normalized_similarity, alto = parecido)
+               sombreando o import do nltk. A tese lê como distância nas p.119 e
+               p.120 — as duas frases estão invertidas. PROVA: os valores
+               publicados (0.1544 / 0.1966) batem com edit_similarity
+               (0.1635 / 0.2415) e não com a distância real (0.8365 / 0.7585).
+
+SV-02 ALTO     BLEU com hipótese e referência trocadas. sentence_bleu([a],b)
+               recebia a personalizada como REFERÊNCIA. BLEU e ROUGE usavam
+               convenções opostas na mesma tabela. Corrigido, BLEU sobe 5-7x
+               (o3-mini: 0.0088 -> 0.0437).
+
+SV-03 CRÍTICO  O baseline ReAct respondeu as perguntas NEUTRAS, não as adaptadas
+               ao perfil (react/src/main.py:56 PROFILES=["Neutral"]), mas o juiz
+               recebia a pergunta adaptada. Contradiz o §5.5 p.82.
+               STATUS: código corrigido, PRECISA REGERAR.
+
+SV-04 CRÍTICO  O juiz recebia context=["Sem perfil de usuário definido."] para o
+               baseline e context=["Perfil do usuário: X"] para os outros dois,
+               com CONTEXT nos evaluation_params. O baseline era avaliado sob
+               prompt diferente. STATUS: corrigido, PRECISA RE-JULGAR.
+
+SV-05 ALTO     O mesmo conjunto de respostas ReAct era pontuado 6x (uma por
+               perfil) e contado como 6 observações independentes.
+
+SV-06 ALTO     O estudo de caso MÉDICO rodou com prompts de FUTEBOL. Um único
+               prompts.py servia os dois domínios; o prompt de Text-to-SQL
+               terminava com "A player can have multiple segments in the same
+               match" e o Tailor recebia quatro personas de futebol como
+               exemplos. O Apêndice C da tese reproduz esse prompt.
+               STATUS: corrigido, PRECISA REGERAR o domínio médico.
+
+SV-07 ALTO     action_node.py:10 descartava o action_input escolhido pelo passo
+               Reason e reenviava a pergunta original.
+
+SV-08 ALTO     O modelo de SQL estava acoplado ao modelo do agente, então varrer
+               modelos varria também o gerador de SQL (confunde o H4).
+               RESOLVIDO: o toolset padrão não usa segundo modelo nenhum.
+
+SV-16 ALTO     O Tailor recebia o scratchpad inteiro, incluindo a linha
+               "Standard Answer: ...". Ou seja, tau(p, c_t) e não tau(p, O*).
+               Reescrevia uma resposta pronta em vez de compor dos fatos.
+
+SV-09 MÉDIO    18 de 3.640 respostas não são respostas (15 vazias, 3 com
+               "[ERRO: 'thought']") e foram pontuadas pelo juiz como se fossem.
+
+SV-10 ALTO     Nada verificava fidelidade factual. A análise semântica que o
+               §5.5 especifica NUNCA foi rodada. Rodando: cosseno médio 0.627
+               (soccer) e 0.705 (covid) — o §5.5 esperava ALTA similaridade.
+               rho de Spearman entre distância de edição e cosseno = -0.547
+               (p~4e-257, n=6720): quanto mais reescreve, menos significado
+               sobrevive. O par mais divergente (cosseno 0.027) é contradição
+               factual: neutra diz "Emanuel Britez", personalizada diz "Titi".
+
+SV-11 MÉDIO    Tudo era unido por posição na lista, sem IDs de pergunta.
+
+SV-12 CRÍTICO  O filtro de outliers deletava 19,1% das notas do PersonaReAct,
+               18,3% do ReAct+Prompt e 0,0% do ReAct. Os quantis eram por coluna
+               (abordagem,modelo) com os TRÊS CRITÉRIOS EMPILHADOS, então um
+               critério inteiro de notas legítimas virava "cauda baixa". Em
+               interpretação de dados isso levanta o PersonaReAct de 6,90 para
+               8,81 e deixa o ReAct em 3,49. ~2 pontos do gap são artefato.
+
+SV-13 MÉDIO    Modelo do juiz não fixado (deepeval caía no default gpt-4o).
+
+SV-14 CRÍTICO  Tratamento e baseline consultaram BUILDS DIFERENTES do banco. Nove
+               cópias do banco de futebol, três builds distintos. O de 09/05 tem
+               duas SQL views; o de 24/04 (que o personareact usava) não tem
+               nenhuma. Ambos com view_support=True. Dificuldade de recuperação
+               não foi mantida constante.
+
+SV-15 CRÍTICO  E essa view estava ERRADA. View_ResumoPorJogadorEPartida juntava
+               Pontos_Trajetoria antes de agregar, inflando as somas por fator
+               MEDIANO DE 43x (3x a 107x nas 727 linhas jogador-partida). Ex.:
+               Brayan vs Ceará 2023-02-07 — view diz 2.220 sprints, verdade 62.
+
+Achados que não mudam número publicado estão em docs/REVIEW.md, entre eles:
+  * o laço externo Reason-Act rodava 2 iterações em 42 de 47 traces (a ferramenta
+    era ela própria um agente ReAct completo, então não sobrava nada pro laço)
+  * draw_mermaid_png() em nível de módulo em react/cot/standard: o default
+    posta o grafo no mermaid.ink, um serviço web de terceiros, A CADA execução
+  * callables dentro do state do LangGraph (mata checkpointing)
+  * `for step in stream(...)` usando `step` fora do loop (NameError se vazio)
+  * with_structured_output sem include_raw (sem tokens, sem detectar falha)
+  * `if "standard_answer" in result` — presença de chave em vez de truthiness
+  * tool_fn(inp) num StructuredTool: BaseTool.__call__ removido no langchain 1.0
+
+--------------------------------------------------------------------------------
+3. O QUE O REPOSITÓRIO NOVO É
+--------------------------------------------------------------------------------
+Um pacote instalável, configuração como dado, resultados como diretórios de run
+imutáveis. NADA se seleciona editando código.
+
+  configs/domain/       soccer, covid          (banco, perfis, unidades, checksum)
+  configs/approach/     9 abordagens           (flags sobre um único grafo)
+  configs/model/        12 modelos
+  configs/judge/        geval-gpt-5.6-sol (padrão), geval-gpt4o-2024-11-20 (legado)
+  configs/experiment/   smoke compare e1 e1-thesis e1-2026 e1-ablations e2 h4-effort
+
+  src/personareact/
+    agent/       grafo LangGraph: reason / act / tailor / router
+    tools/       sql_primitives.py (PADRÃO) e text_to_sql.py (agente aninhado)
+    prompts/pt_BR/{shared,soccer,covid}/   prompts como arquivos, com hash
+    corpus/      Question / Answer / Score + io jsonl
+    datasets/    builders dos bancos (views CORRIGIDAS)
+    eval/        criteria, judge, similarity, factuality, stats
+    analysis/    experiment1.py, experiment2.py (tabelas e figuras)
+    runner.py    sweep com resume, teto de custo e manifesto
+    cli.py
+
+AS SEIS ABORDAGENS (mais três variantes -thesis):
+  standard         sem raciocínio, sem ferramenta
+  cot              raciocínio, sem ferramenta      (= "Reason Only" da Figura 2)
+  act              ferramenta, sem raciocínio      (= "Act Only" da Figura 2)
+  react            raciocínio + ferramentas primitivas
+  react_enriched   idem + sufixo de perfil na pergunta
+  personareact     idem + etapa Tailor
+  *-thesis         reproduzem o comportamento de 2025 (agente aninhado,
+                   5 iterações, Tailor vendo o scratchpad inteiro)
+
+DECISÕES DE PROJETO QUE IMPORTAM:
+  * toolset: primitives (PADRÃO) expõe listar_tabelas / descrever_tabelas /
+    executar_sql ao laço externo. Resultado: 4-5 iterações em vez de 2, nenhum
+    segundo modelo de linguagem, e erro de SQL vira observação que o agente
+    corrige. max_iterations subiu de 5 para 8 por causa disso.
+  * tailor_sees: observations (PADRÃO) implementa tau(p, O*) do §4.2.
+    "context" reproduz a tese.
+  * unidades viajam NA OBSERVAÇÃO: configs/domain/*.yaml declaram um mapa
+    coluna->unidade e as ferramentas SQL anotam as colunas do resultado. Sem
+    isso o Tailor perde a unidade (foi assim que surgiu "1,36 naquela unidade de
+    medida do time").
+  * o corpus tem question_id estável; TODO join é merge por chave.
+  * todo run escreve manifest.json com git SHA, hash de cada prompt, checksum do
+    banco, snapshots dos modelos, parâmetros, tokens e custo.
+
+--------------------------------------------------------------------------------
+4. RESULTADOS JÁ MEDIDOS (não repita, já está feito)
+--------------------------------------------------------------------------------
+A) A MIGRAÇÃO É FIEL. As tabelas da tese reproduzem célula a célula com
+   `--legacy-outliers`. Verificado contra as Tabelas 7-9 (covid, o3-mini):
+   8.81/8.77, 9.02/9.02, 9.03/9.03, 9.13/9.13, 3.49/3.49, 4.67/4.64, 6.90/6.87.
+   Resíduo <=0.03 vem de colapsar repetições por pergunta antes da média.
+   Os 75.600 scores legados casaram com question_id com ZERO órfãos.
+
+B) COMPARAÇÃO CONTROLADA (run 2026-08-24T011337Z-compare, 120 respostas,
+   US$ 1,47 + US$ ~3 de juiz; julgada em 2026-08-24T014918Z-judge-compare).
+   Detalhes em docs/COMPARISON.md.
+
+   Geração (corrigido vs tese):
+     personareact    4,05 vs 2,00 iterações | 18.968 vs 51.799 tokens
+                     US$0,011 vs 0,018      | 94,1% vs 87,5% de números ancorados
+     react           4,20 vs 2,00 | 100% vs 94,1%
+     react_enriched  4,20 vs 1,75 | 100% vs 70,6%  <-- a tese inventava 29,4%
+
+   H1 (PersonaReAct vs ReAct): SUSTENTA e fica mais forte.
+     corrigido +2,95 / +3,63 / +2,06 (todos grandes, p<0,001)
+     tese      +2,71 / +3,07 / +1,82
+   H3 (PersonaReAct vs prompt enriquecido): sai de REFUTADA para EMPATADA.
+     tese      interpretação de dados -2,06, efeito grande, p=0,001 (pior!)
+     corrigido -0,19 p=0,95 / +0,73 p=0,74 / +0,07 p=0,95 (nenhuma significativa)
+   Ressalva: 20 respostas por célula, 3 repetições. Direcional, não conclusivo.
+
+C) H4 COMO VARIÁVEL CONTROLADA. Mesmo modelo (gpt-5.6-luna), só o dial muda:
+     effort=none    1 iteração,  0 ferramentas, RECUSA responder
+     effort=medium  4 iterações, 3 ferramentas, resposta ancorada "1,36 m/s"
+     effort=high    4 iterações, 3 ferramentas, resposta ancorada
+   Com none o agente NÃO AGE. O dial decide se o ciclo Reason-Act acontece.
+
+D) Estatística corrigida sobre o legado (126 comparações, e1_tests.csv):
+     PersonaReAct vs ReAct            42/42 significativas, todas efeito grande
+     PersonaReAct vs ReAct+Prompt     22/42 significativas, 12 efeito desprezível
+
+--------------------------------------------------------------------------------
+5. CUSTOS (medidos, não estimados de cabeça)
+--------------------------------------------------------------------------------
+Base do juiz: prompt do G-Eval medido com tiktoken = ~621 in / ~120 out por
+chamada. Chamadas = respostas x 3 critérios x repetições.
+
+  experimento     células  respostas   geração   juiz(5rep)    total
+  smoke                 7          7    $ 0,02      $  0,51   $  0,53
+  h4-effort            54        540    $ 1,02      $ 39,56   $ 40,58
+  e2                   56        560    $ 3,65      offline   $  3,65
+  compare              24        120    $ 0,73      $  4,95   $  5,68
+  e1-ablations        288      2.880    $19,11      $210,99   $230
+  e1-2026             360      3.600    $44,49      $263,74   $308
+  e1-thesis           504      5.040    $17,70      $208,09   $226
+  e1                  504      5.040    $19,92      $369,23   $389
+  re-julgar legado      —      3.640         —      $267      $267
+
+Alavancas (julgar o e1, 5.040 respostas):
+  juiz                5 reps   3 reps   1 rep
+  gpt-5.6-sol          $369     $222     $ 74
+  gpt-5.6-terra        $203     $122     $ 41
+  gpt-5.6-luna         $ 20     $ 12     $  4
+  gpt-4o (legado)      $208     $125     $ 42
+
+RECOMENDAÇÃO PENDENTE DE DECISÃO DO USUÁRIO: o juiz padrão é gpt-5.6-sol, que a
+$369 por varredura é caro demais. gpt-5.6-terra a 3 repetições ($122) é o ponto
+certo. A troca é editar configs/experiment/*.yaml ou passar --judge.
+
+--------------------------------------------------------------------------------
+6. COMO RODAR
+--------------------------------------------------------------------------------
+  cd ~/Desktop/personareact
+  uv sync --extra analysis --extra judge     # + --extra embeddings p/ t-SNE (1,3GB)
+  cp .env.example .env                       # a chave já está lá se o usuário criou
+
+  personareact list                          # tudo que está configurado
+  personareact describe e1                   # o que um experimento faria
+  personareact run --experiment X --dry-run  # SEMPRE antes de gastar
+  personareact runs                          # runs em disco
+
+  personareact run     --experiment e1 --cost-limit 30
+  personareact judge   --run <run_id> --judge geval-gpt-5.6-terra --repetitions 3
+  personareact analyze --run <judge_id> --experiment e1
+  personareact analyze --run <judge_id> --experiment e1 --legacy-outliers
+  personareact analyze --run <run_id> --experiment e2 --semantic
+
+  make test / make lint / make ci            # CI local
+  python scripts/compare_with_thesis.py --csv  # E2 corrigido vs tese, offline
+
+Retomada: --resume <run_id>. Teto: --cost-limit N (aborta com manifesto parcial).
+
+--------------------------------------------------------------------------------
+7. O QUE FALTA — EM ORDEM DE VALOR
+--------------------------------------------------------------------------------
+1. RE-JULGAR o legado (results/legacy-thesis-2025) com a bancada simétrica.
+   Corrige SV-04, SV-09 e SV-13 sem regerar nada. ~$150-267 conforme o juiz.
+   É a ação de maior valor: revela se os resultados publicados sobrevivem.
+2. RODAR e1 vs e1-thesis em escala completa. PRAZO 23/10/2026 (ver seção 8).
+3. REGERAR o domínio médico com prompts corretos (SV-06).
+4. ESCREVER os 40 gold answers (docs/GOLD.md) para o check factual ter ground
+   truth. Só as 40 perguntas neutras precisam; as variantes herdam por neutral_id.
+5. CONFIRMAR a interação de temperature do juiz novo contra a API. NÃO validado.
+   `personareact judge --run <run pequena> --limit 2 --repetitions 1` (centavos).
+6. REPORTAR dificuldade (easy/hard) como fator. Está em todo registro e a tese
+   nunca analisou. É um groupby.
+7. Publicar: tornar público + Zenodo para DOI. A nota de rodapé 3 da p.74 aponta
+   para https://github.com/gustavolgcr/personareact e hoje dá 404.
+
+--------------------------------------------------------------------------------
+8. PRAZO REAL: MODELOS SENDO DESLIGADOS
+--------------------------------------------------------------------------------
+Cinco dos sete modelos da tese têm data de desligamento (docs/MODELS.md):
+  o3-mini-2025-01-31, o4-mini-2025-04-16, gpt-4.1-nano-2025-04-14  -> 2026-10-23
+  gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07                     -> 2026-12-11
+  gpt-4.1-mini e gpt-4o-mini sobrevivem (são a ponte com a tese)
+
+Consequências: o Capítulo 6 deixa de ser RE-GERÁVEL (as respostas estão
+arquivadas, mas ninguém vai poder produzi-las de novo), e o e1/e1-thesis tem
+prazo até 23 de outubro.
+
+Linha atual recomendada: gpt-5.6-luna ($0,20/$1,20), gpt-5.6-terra ($2/$12),
+gpt-5.6-sol ($4/$20 promocional até 21/11, lista $5/$30).
+Custo deixou de ser a restrição que o §5.6 descreve: luna roda uma pergunta do
+PersonaReAct por $0,0023 contra $0,0035 do gpt-4.1-mini.
+
+--------------------------------------------------------------------------------
+9. ARMADILHAS JÁ DESCOBERTAS (não caia de novo)
+--------------------------------------------------------------------------------
+* deepeval 2.9.7 tem TRÊS registries fixos. Um modelo ausente falha diferente:
+    valid_gpt_models          -> ValueError na hora
+    structured_outputs_models -> SILENCIOSO, o G-Eval sai da saída estruturada
+    model_pricing             -> KeyError DEPOIS da chamada paga
+  Por isso eval/criteria.py::_register_with_deepeval registra os três.
+* deepeval passa temperature em TODA chamada, default 0, que modelos de
+  raciocínio rejeitam. O juiz é construído como instância GPTModel configurada,
+  não como string. temperature=1.0 no sol, 0.0 no legado.
+* deepeval 2.9.7 NÃO consegue passar reasoning.effort. O juiz roda no default.
+* langgraph e langgraph-prebuilt são versionados separado e divergiram: faixa
+  solta resolve prebuilt 1.x contra langgraph 0.4.x e quebra com
+  "No module named 'langgraph._internal'". uv.lock trava os 163 pacotes.
+* OpenAI parou de publicar snapshots datados na família 5.6. gpt-5.6-luna É o
+  snapshot. Configs declaram no_dated_snapshot: true e há teste exigindo isso.
+* Um aviso LangChainPendingDeprecationWarning sobre allowed_objects aparece em
+  todo comando. É da LangGraph 0.3.x, resiste a filterwarnings porque a
+  LangChain envolve a emissão em catch_warnings. Deixado visível de propósito.
+* Testes que dependem do ambiente escondem bugs: plot_projection passava
+  localmente porque eu tinha o extra `embeddings`; no CI limpo estourava. Se
+  escrever teste de caminho opcional, BLOQUEIE o import explicitamente.
+
+--------------------------------------------------------------------------------
+10. PERGUNTAS EM ABERTO PARA O USUÁRIO
+--------------------------------------------------------------------------------
+1. Qual implementação gerou as Tabelas 2/5/8/11 da tese (o baseline "ReAct com
+   prompt enriquecido")? Assumi o sufixo de uma linha do react/src/main.py:86,
+   que bate com o §5.5 e produziu os dados. Existia uma SEGUNDA implementação
+   diferente em react_prompt_personalization/ que não gerou dado nenhum. Se eu
+   errei, é trocar question_suffix no YAML.
+2. Rodar plain ReAct nas perguntas neutras foi deliberado? Se sim, é defensável
+   e só precisa ser dito. Se não, aquela condição precisa ser regerada.
+3. Os dados do Fortaleza EC podem ser liberados em alguma forma (agregada,
+   anonimizada, sintética com o mesmo schema)? Sem isso metade do artefato não
+   roda para terceiros.
+4. Trocar o juiz padrão para gpt-5.6-terra a 3 repetições? (economia de ~$250)
+5. O pipeline de GPX -> segmentos de 30 pontos descrito no §5.1 NÃO EXISTE em
+   nenhum dos 12 repositórios. Se existe em outro lugar, deveria entrar em
+   src/personareact/datasets/. Se não existe mais, é perda irrecuperável e o
+   README precisa dizer.
+
+--------------------------------------------------------------------------------
+11. LEITURA OBRIGATÓRIA NO REPOSITÓRIO
+--------------------------------------------------------------------------------
+  README.md            instalação, comandos, mapa tese->comando que regenera
+  docs/ERRATA.md       os 16 defeitos, com arquivo, linha, efeito e correção
+  docs/REVIEW.md       avaliação do código original vs. o que os cap. 4 e 5 dizem
+  docs/COMPARISON.md   corrigido vs tese, com os números e as ressalvas
+  docs/MODELS.md       linha de modelos 2026, prazos, e o H4 como dial
+  docs/DATA.md         proveniência dos dados e o passo que falta
+  docs/GOLD.md         como escrever os gold answers
+
+Relatórios visuais (artifacts do Claude, privados):
+  raio-x da implementação original:
+    https://claude.ai/code/artifact/26978278-910e-439d-943d-cd68def880e4
+  reconstrução e resultados:
+    https://claude.ai/code/artifact/bc00d645-d55e-4c83-9e70-44c11f6cbfdf
+
+================================================================================
+FIM
+================================================================================
